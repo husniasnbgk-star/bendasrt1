@@ -18,6 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --navy:#132A4C;
@@ -439,6 +440,7 @@ Siti Aminah, SD</pre>
     <button class="btn-outline" id="btnSettings">⚙️ Pengaturan Tampilan</button>
     <button class="btn-gold" id="btnExportDatabase">📁 Ekspor Database Excel</button>
     <a href="https://drive.google.com/drive/folders/1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q" target="_blank" rel="noopener" class="btn-outline" style="text-decoration:none;display:inline-flex;align-items:center;">☁️ Folder Drive: BENDAHARA HUS</a>
+    <button class="btn-outline" id="btnGoogleLogin">🔑 Login Google &amp; Upload Otomatis</button>
     <button class="btn-danger" id="btnClearDatabase">Kosongkan Database</button>
     <button class="btn-ghost" id="btnPrint">Cetak</button>
     <button class="btn-ghost" id="btnPdf">Ekspor PDF</button>
@@ -3355,6 +3357,75 @@ async function saveDatabaseRecords(list){
   try{ await window.storage.set('database-narasumber-records', JSON.stringify(list), false); }catch(e){}
 }
 
+const GOOGLE_CLIENT_ID = '912546967395-9cq89bhec07vv6stp7deqibbnlqrs4qs.apps.googleusercontent.com';
+const DRIVE_FOLDER_ID = '1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+let googleAccessToken = null;
+let googleTokenClient = null;
+
+function updateGoogleLoginUI(loggedIn){
+  const btn = el('btnGoogleLogin');
+  if(!btn) return;
+  btn.textContent = loggedIn ? '✅ Google Terhubung — Upload Otomatis Aktif' : '🔑 Login Google & Upload Otomatis';
+}
+
+function initGoogleAuth(){
+  if(!window.google || !google.accounts || !google.accounts.oauth2) return;
+  googleTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: (tokenResponse) => {
+      if(tokenResponse && tokenResponse.access_token){
+        googleAccessToken = tokenResponse.access_token;
+        updateGoogleLoginUI(true);
+        alert('Berhasil terhubung ke Google Drive. Mulai sekarang, "Ekspor Database Excel" otomatis ter-upload ke folder BENDAHARA HUS.');
+      }
+    },
+    error_callback: () => {
+      alert('Login Google gagal atau dibatalkan. Coba lagi.');
+    }
+  });
+}
+
+function waitForGoogleAndInit(){
+  if(window.google && google.accounts && google.accounts.oauth2){
+    initGoogleAuth();
+  } else {
+    setTimeout(waitForGoogleAndInit, 300);
+  }
+}
+
+el('btnGoogleLogin').addEventListener('click', () => {
+  if(!googleTokenClient){
+    alert('Layanan Google belum siap, coba lagi sebentar.');
+    return;
+  }
+  googleTokenClient.requestAccessToken();
+});
+
+async function uploadToGoogleDrive(blob, filename){
+  if(!googleAccessToken) return false;
+  const metadata = { name: filename, parents: [DRIVE_FOLDER_ID] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
+  form.append('file', blob);
+  try{
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + googleAccessToken },
+      body: form
+    });
+    if(!res.ok){
+      if(res.status === 401){ googleAccessToken = null; updateGoogleLoginUI(false); }
+      return false;
+    }
+    return true;
+  }catch(e){
+    console.error(e);
+    return false;
+  }
+}
+
 async function exportDatabaseExcel(){
   const h = gatherHeader();
   if(rows.length === 0){
@@ -3430,8 +3501,20 @@ async function exportDatabaseExcel(){
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/octet-stream'});
-  saveAs(blob, 'Database_Narasumber_' + new Date().toISOString().slice(0,10) + '.xlsx');
-  window.open('https://drive.google.com/drive/folders/1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q', '_blank');
+  const filename = 'Database_Narasumber_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  saveAs(blob, filename);
+
+  if(googleAccessToken){
+    const uploaded = await uploadToGoogleDrive(blob, filename);
+    if(uploaded){
+      alert('File juga berhasil ter-upload otomatis ke folder BENDAHARA HUS di Google Drive.');
+    } else {
+      alert('Upload otomatis ke Drive gagal (mungkin sesi login sudah habis). File tetap terunduh — silakan upload manual, atau klik "Login Google" lagi.');
+      window.open('https://drive.google.com/drive/folders/1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q', '_blank');
+    }
+  } else {
+    window.open('https://drive.google.com/drive/folders/1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q', '_blank');
+  }
   await addToRiwayat('Ekspor Database Excel');
 }
 
@@ -3450,6 +3533,7 @@ generateNamedPageRules();
 loadSKCounter().then(() => { if(docMode === 'sk') renderPreview(); });
 loadSPBCounter().then(() => { if(docMode === 'spb') renderPreview(); });
 loadDocSettings().then(() => { renderPreview(); });
+waitForGoogleAndInit();
 </script>
 </body>
 </html>
