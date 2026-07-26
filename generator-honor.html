@@ -124,6 +124,10 @@
   .doc-tth{page: tth-a4;}
   .doc-hadir{page: hadir-a4;}
   .doc-rekap{page: rekap-a4;}
+  .doc-rekap table{border-collapse:collapse;}
+  .doc-rekap thead{display:table-header-group;}
+  .doc-rekap tr{page-break-inside:avoid;break-inside:avoid;}
+  .doc-rekap tbody{page-break-inside:auto;}
   .doc-surat{page: surat-a4;}
   .doc-sk{page: sk-a4;}
   .doc-spb{page: spb-a4;}
@@ -601,6 +605,10 @@ Siti Aminah, SD</pre>
           <option value="bulan">Per Bulan</option>
           <option value="tahun">Per Tahun</option>
         </select>
+      </div>
+      <div class="field" style="min-width:280px;">
+        <label>Judul Kegiatan untuk Rekap (opsional)</label>
+        <input id="rekapJudulKegiatan" placeholder="Kosongkan = OLAH BAKAT DAN MINAT">
       </div>
     </div>
     <div class="rekap-filters" id="skFilters" style="display:none;">
@@ -1258,7 +1266,7 @@ function buildSuratNomor(index, h){
     if(parts[1]) bulanRomawi = toRomanMonth(parts[1]);
     if(parts[0]) tahun = parts[0];
   }
-  return `${nomorUrut}/UND/9.11.25/${bulanRomawi}/${tahun}`;
+  return `${nomorUrut}/9.11.25/UND/${bulanRomawi}/${tahun}`;
 }
 
 function buildSuratHTML(row, index){
@@ -1528,7 +1536,7 @@ function buildSKNomor(h){
     if(parts[1]) bulanRomawi = toRomanMonth(parts[1]);
     if(parts[0]) tahun = parts[0];
   }
-  return `${nomorUrut}/SK/9.11.25/${bulanRomawi}/${tahun}`;
+  return `${nomorUrut}/9.11.25/SK/${bulanRomawi}/${tahun}`;
 }
 
 function resolveSuratNomor(row, index, h){
@@ -1556,7 +1564,7 @@ function buildSKNomorForIndex(index, h){
     if(parts[1]) bulanRomawi = toRomanMonth(parts[1]);
     if(parts[0]) tahun = parts[0];
   }
-  return `${nomorUrut}/SK/9.11.25/${bulanRomawi}/${tahun}`;
+  return `${nomorUrut}/9.11.25/SK/${bulanRomawi}/${tahun}`;
 }
 
 function buildSKHTML(rowsSubset, nomorOverride){
@@ -2118,24 +2126,16 @@ function buildRekapHTML(){
     }).join('');
     grandKotor += subKotor; grandPph += subPph; grandBersih += subBersih; grandCount += list.length;
     bodyHTML += `
-      <tr><td colspan="7" style="font-weight:700;padding:7px 8px;background:#F1F3F6;">${groupLabels[key]} — ${list.length} narasumber</td></tr>
-      ${rowsHTML}
-      <tr class="total-row">
-        <td colspan="4" class="center-cell">Subtotal ${groupLabels[key]}</td>
-        <td class="num-cell">${fmt(subKotor)}</td>
-        <td class="num-cell">${fmt(subPph)}</td>
-        <td class="num-cell">${fmt(subBersih)}</td>
-      </tr>`;
+      <tr><td colspan="7" style="font-weight:700;padding:7px 8px;background:#F1F3F6;">${groupLabels[key]}</td></tr>
+      ${rowsHTML}`;
   });
 
   const jenjangLabels = {SBC:'SD (SRD)', SBE:'SMP (SRMP)', SBB:'SMA (SRMA)'};
-  const filterLabels = [];
-  if(jenjangFilter !== 'ALL') filterLabels.push(jenjangLabels[jenjangFilter] || jenjangFilter);
-  if(kategoriFilter !== 'ALL') filterLabels.push(KATEGORI_LABELS[kategoriFilter] || kategoriFilter);
-  if(tanggalFilter !== 'ALL') filterLabels.push(formatTanggalID(tanggalFilter));
-  const groupByLabel = {jenjang:'Per Jenjang', kategori:'Per Kategori', tanggal:'Per Tanggal (Momen)', minggu:'Per Minggu', bulan:'Per Bulan', tahun:'Per Tahun'}[groupBy];
-  const filterText = (filterLabels.length ? ` (Filter: ${filterLabels.join(', ')})` : '') + ` — ${groupByLabel}`;
   const pphPersen = el('f_pphdefault') ? el('f_pphdefault').value : '5';
+  const rekapJudulInput = el('rekapJudulKegiatan') ? el('rekapJudulKegiatan').value.trim() : '';
+  const rekapJudulLine = rekapJudulInput
+    ? (/^DALAM RANGKA/i.test(rekapJudulInput) ? rekapJudulInput.toUpperCase() : 'DALAM RANGKA KEGIATAN ' + rekapJudulInput.toUpperCase())
+    : 'DALAM RANGKA KEGIATAN OLAH BAKAT DAN MINAT';
 
   return `
   <div class="doc-rekap">
@@ -2144,6 +2144,7 @@ function buildRekapHTML(){
       <col style="width:5%;"><col style="width:14%;"><col style="width:23%;"><col style="width:15%;">
       <col style="width:15%;"><col style="width:13%;"><col style="width:15%;">
     </colgroup>
+    <thead>
     <tr>
       <td class="kop-left" colspan="4" style="border:none;">${h.kop1}<br>${h.kop2}</td>
       <td colspan="3" style="padding:0;border:none;">
@@ -2155,7 +2156,7 @@ function buildRekapHTML(){
         </table>
       </td>
     </tr>
-    <tr><td class="title-block" colspan="7">NOMINATIF HONOR INSTRUKTUR${filterText}<br>${h.judul2}<br>${h.judul3}</td></tr>
+    <tr><td class="title-block" colspan="7">NOMINATIF HONOR INSTRUKTUR<br>${rekapJudulLine}<br>${h.judul3}</td></tr>
     <tr>
       <th class="th-cell">NO</th>
       <th class="th-cell">INSTRUKTUR</th>
@@ -2165,13 +2166,50 @@ function buildRekapHTML(){
       <th class="th-cell">Pph 21<br>(${pphPersen}%)</th>
       <th class="th-cell">JUMLAH<br>BERSIH (Rp)</th>
     </tr>
+    </thead>
+    <tbody>
     ${bodyHTML || `<tr><td colspan="7" class="center-cell" style="padding:20px;color:#8A93A3;font-style:italic;">Tidak ada data narasumber sesuai filter yang dipilih.</td></tr>`}
     <tr class="total-row">
-      <td colspan="4" class="center-cell">TOTAL KESELURUHAN — ${grandCount} narasumber</td>
+      <td colspan="4" class="center-cell">TOTAL KESELURUHAN</td>
       <td class="num-cell">${fmt(grandKotor)}</td>
       <td class="num-cell">${fmt(grandPph)}</td>
       <td class="num-cell">${fmt(grandBersih)}</td>
     </tr>
+    <tr>
+      <td colspan="7" class="footer-block">
+        <div class="footer-grid">
+          <div>
+            <div class="lbl">
+              Setuju Dibayar<br>
+              an. Kuasa Pengguna Anggaran<br>
+              Pejabat Pembuat Komitmen<br>
+              ${h.wilayah}
+            </div>
+            <div class="name">${h.ppkNama}</div>
+            <div class="nip">NIP. ${h.ppkNip}</div>
+          </div>
+          <div>
+            <div class="lbl">
+              Lunas Dibayar<br>
+              Tanggal &nbsp;.......................... ${h.lunasTgl}<br>
+              Bendahara Pengeluaran Pembantu
+            </div>
+            <div class="name">${h.bendaharaNama}</div>
+            <div class="nip">NIP. ${h.bendaharaNip}</div>
+          </div>
+          <div>
+            <div class="lbl">
+              ${h.ttdLokasi}<br>
+              Yang Membayarkan<br>
+              ${h.bayarJabatan}
+            </div>
+            <div class="name">${h.bayarNama}</div>
+            <div class="nip">NIP. ${h.bayarNip}</div>
+          </div>
+        </div>
+      </td>
+    </tr>
+    </tbody>
   </table>
   </div>
   `;
@@ -2194,10 +2232,16 @@ el('skPerPerson').addEventListener('change', e => {
   renderPreview();
 });
 
-el('rekapJenjangFilter').addEventListener('change', renderPreview);
+el('rekapJenjangFilter').addEventListener('change', e => {
+  if(e.target.value !== 'ALL'){
+    updateMataAnggaranAndJudul(e.target.value);
+  }
+  renderPreview();
+});
 el('rekapKategoriFilter').addEventListener('change', renderPreview);
 el('rekapTanggalFilter').addEventListener('change', renderPreview);
 el('rekapGroupBy').addEventListener('change', renderPreview);
+el('rekapJudulKegiatan').addEventListener('input', renderPreview);
 
 el('btnAddRow').addEventListener('click', () => {
   rows.push({nama:'', org:'', jabatan:'', rate:0, oj:1, pph: parseFloat(el('f_pphdefault').value)||0, jenjang: null});
@@ -2310,8 +2354,35 @@ el('btnPdf').addEventListener('click', async () => {
       pdf.addImage(imgData, 'PNG', x, y, renderW, renderH);
     }
 
+    async function addCanvasPageSplit(html, isFirst){
+      paper.innerHTML = html;
+      paper.classList.toggle('no-frame', isPortraitDoc);
+      fitNamaCells(paper);
+      const canvas = await html2canvas(paper, {scale: 2, backgroundColor: '#ffffff'});
+      const pxPerMM = canvas.width / availW;
+      const pageHeightPx = Math.floor(availH * pxPerMM);
+      const totalPages = Math.max(1, Math.ceil(canvas.height / pageHeightPx));
+
+      for(let p = 0; p < totalPages; p++){
+        const sliceY = p * pageHeightPx;
+        const sliceH = Math.min(pageHeightPx, canvas.height - sliceY);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceH;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const imgData = sliceCanvas.toDataURL('image/png');
+        const renderW = availW, renderH = sliceH / pxPerMM;
+        const x = marginLeftMM, y = marginTop;
+        if(!(isFirst && p === 0)) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', x, y, renderW, renderH);
+      }
+    }
+
     if(docMode === 'rekap'){
-      await addCanvasPage(buildRekapHTML(), true);
+      await addCanvasPageSplit(buildRekapHTML(), true);
     } else if(docMode === 'sk'){
       if(skPerPersonMode){
         const skActive = getActiveRows();
@@ -2575,14 +2646,12 @@ async function exportExcelRekap(){
   ws.mergeCells('E2:E2'); setCell('E2','Tgl. Pembukuan', {alignment:{horizontal:'left'}, border:false});
   ws.mergeCells('F2:G2'); setCell('F2',': ' + (h.tglbuku||''), {alignment:{horizontal:'left'}, border:false});
 
-  const filterLabels = [];
-  if(jenjangFilter !== 'ALL') filterLabels.push(jenjangLabels[jenjangFilter] || jenjangFilter);
-  if(kategoriFilter !== 'ALL') filterLabels.push(KATEGORI_LABELS[kategoriFilter] || kategoriFilter);
-  if(tanggalFilter !== 'ALL') filterLabels.push(formatTanggalID(tanggalFilter));
-  const groupByLabel = {jenjang:'Per Jenjang', kategori:'Per Kategori', tanggal:'Per Tanggal (Momen)', minggu:'Per Minggu', bulan:'Per Bulan', tahun:'Per Tahun'}[groupBy];
-  const filterText = (filterLabels.length ? ` (Filter: ${filterLabels.join(', ')})` : '') + ` — ${groupByLabel}`;
+  const rekapJudulInput = el('rekapJudulKegiatan') ? el('rekapJudulKegiatan').value.trim() : '';
+  const rekapJudulLine = rekapJudulInput
+    ? (/^DALAM RANGKA/i.test(rekapJudulInput) ? rekapJudulInput.toUpperCase() : 'DALAM RANGKA KEGIATAN ' + rekapJudulInput.toUpperCase())
+    : 'DALAM RANGKA KEGIATAN OLAH BAKAT DAN MINAT';
   ws.mergeCells('A4:G4');
-  setCell('A4', `NOMINATIF HONOR INSTRUKTUR${filterText}\n${h.judul2}\n${h.judul3}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
+  setCell('A4', `NOMINATIF HONOR INSTRUKTUR\n${rekapJudulLine}\n${h.judul3}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
   ws.getRow(4).height = 50;
 
   const pphPersen = el('f_pphdefault') ? el('f_pphdefault').value : '5';
@@ -2637,7 +2706,7 @@ async function exportExcelRekap(){
     const list = groups[key];
     if(!list || list.length === 0) return;
     ws.mergeCells(`A${r}:G${r}`);
-    setCell(`A${r}`, `${groupLabels[key]} — ${list.length} narasumber`, {font:{bold:true}, alignment:{horizontal:'left'}});
+    setCell(`A${r}`, `${groupLabels[key]}`, {font:{bold:true}, alignment:{horizontal:'left'}});
     r++;
     list.forEach(row => {
       const {totalKotor, pphAmt, bersih} = computeRow(row);
@@ -2654,10 +2723,26 @@ async function exportExcelRekap(){
   });
 
   ws.mergeCells(`A${r}:D${r}`);
-  setCell(`A${r}`, `TOTAL KESELURUHAN — ${grandCount} narasumber`, {font:{bold:true}, alignment:{horizontal:'center'}});
+  setCell(`A${r}`, `TOTAL KESELURUHAN`, {font:{bold:true}, alignment:{horizontal:'center'}});
   setCell(`E${r}`, grandKotor, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
   setCell(`F${r}`, grandPph, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
   setCell(`G${r}`, grandBersih, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
+  r += 2;
+
+  const footerStartRow = r;
+  ws.mergeCells(`A${r}:B${r+4}`);
+  setCell(`A${r}`, `Setuju Dibayar\nan. Kuasa Pengguna Anggaran\nPejabat Pembuat Komitmen\n${h.wilayah}\n\n\n\n${h.ppkNama}\nNIP. ${h.ppkNip}`,
+    {alignment:{horizontal:'left', vertical:'top', wrapText:true}, border:false});
+
+  ws.mergeCells(`C${r}:D${r+4}`);
+  setCell(`C${r}`, `Lunas Dibayar\nTanggal   .......................... ${h.lunasTgl}\nBendahara Pengeluaran Pembantu\n\n\n\n${h.bendaharaNama}\nNIP. ${h.bendaharaNip}`,
+    {alignment:{horizontal:'left', vertical:'top', wrapText:true}, border:false});
+
+  ws.mergeCells(`E${r}:G${r+4}`);
+  setCell(`E${r}`, `${h.ttdLokasi}\nYang Membayarkan\n${h.bayarJabatan}\n\n\n\n${h.bayarNama}\nNIP. ${h.bayarNip}`,
+    {alignment:{horizontal:'center', vertical:'top', wrapText:true}, border:false});
+
+  for(let rr=footerStartRow; rr<=footerStartRow+4; rr++) ws.getRow(rr).height = 22;
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/octet-stream'});
