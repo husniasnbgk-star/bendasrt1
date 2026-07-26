@@ -439,6 +439,12 @@ Siti Aminah, SD</pre>
     <button class="btn-outline" id="btnRiwayat">Riwayat</button>
     <button class="btn-outline" id="btnSettings">⚙️ Pengaturan Tampilan</button>
     <button class="btn-gold" id="btnExportDatabase">📁 Ekspor Database Excel</button>
+    <button class="btn-outline" id="btnImportDatabase">📂 Muat Ulang dari Database Excel</button>
+    <input type="file" id="importDatabaseInput" accept=".xlsx" style="display:none;">
+    <label class="jchk" style="display:inline-flex;align-items:center;gap:6px;background:#fff;">
+      <input type="checkbox" id="useOldNumbersCheckbox" style="width:auto;">
+      Gunakan nomor Surat &amp; SK lama dari file (opsional)
+    </label>
     <a href="https://drive.google.com/drive/folders/1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q" target="_blank" rel="noopener" class="btn-outline" style="text-decoration:none;display:inline-flex;align-items:center;">☁️ Folder Drive: BENDAHARA HUS</a>
     <button class="btn-outline" id="btnGoogleLogin">🔑 Login Google &amp; Upload Otomatis</button>
     <button class="btn-danger" id="btnClearDatabase">Kosongkan Database</button>
@@ -616,7 +622,14 @@ Siti Aminah, SD</pre>
           <option value="LAINNYA">SK Lainnya (Umum)</option>
         </select>
       </div>
-      <div class="small-note" style="margin:0;align-self:center;">Narasi Menimbang & tugas di diktum KEDUA otomatis menyesuaikan pilihan ini. Pilih "SK Lainnya" untuk narasi umum mengikuti Nama Kegiatan bebas.</div>
+      <div class="field" style="min-width:260px;">
+        <label>&nbsp;</label>
+        <div class="pph-toggle">
+          <input type="checkbox" id="skPerPerson" style="width:auto;">
+          <label for="skPerPerson" style="margin:0;">1 Instruktur = 1 SK (opsional)</label>
+        </div>
+      </div>
+      <div class="small-note" style="margin:0;align-self:center;">Narasi Menimbang & tugas di diktum KEDUA otomatis menyesuaikan pilihan ini. Pilih "SK Lainnya" untuk narasi umum mengikuti Nama Kegiatan bebas. Kalau "1 Instruktur = 1 SK" dicentang, tiap narasumber dapat SK sendiri dengan nomor berurutan (001, 002, dst) seperti Surat Undangan — kalau tidak dicentang, satu SK berisi semua nama.</div>
     </div>
     <div class="small-note" style="margin-bottom:14px;">Isi data sekali di panel kiri — tombol <strong>Cetak Semua</strong> dan <strong>Ekspor PDF Gabungan</strong> otomatis membuat 2 halaman: semua narasumber dalam satu tabel Tanda Terima Honor, lalu semua narasumber dalam satu tabel Daftar Hadir. Centang opsi "1 narasumber = 1 halaman" di panel Daftar Narasumber kalau mau tiap orang punya halaman terpisah.</div>
     <div class="paper" id="paper"></div>
@@ -864,6 +877,9 @@ function renderRows(){
       const idx = +e.target.dataset.idx;
       const field = e.target.dataset.field;
       rows[idx][field] = e.target.value;
+      if(field === 'kategori' && e.target.value && el('skJenisKegiatan')){
+        el('skJenisKegiatan').value = e.target.value;
+      }
       renderPreview();
     });
   });
@@ -1003,7 +1019,14 @@ function renderPreview(){
   if(docMode === 'rekap'){
     el('paper').innerHTML = buildRekapHTML();
   } else if(docMode === 'sk'){
-    el('paper').innerHTML = buildSKHTML();
+    if(skPerPersonMode){
+      const active = getActiveRows();
+      el('paper').innerHTML = active.length > 0
+        ? active.map((r,i) => `<div class="print-page${i>0?' print-break':''}">${buildSKHTML([r], resolveSKNomorForIndex(r, i, gatherHeader()))}</div>`).join('')
+        : buildSKHTML();
+    } else {
+      el('paper').innerHTML = buildSKHTML();
+    }
   } else if(docMode === 'spb'){
     const pages = buildSPBKwitansiPages();
     el('paper').innerHTML = pages.length > 0
@@ -1240,7 +1263,7 @@ function buildSuratNomor(index, h){
 
 function buildSuratHTML(row, index){
   const h = gatherHeader();
-  const nomorSurat = buildSuratNomor(index, h);
+  const nomorSurat = resolveSuratNomor(row, index, h);
   const isoKegiatan = row.tanggal || h.tglKegiatan || new Date().toISOString().slice(0,10);
   const tanggalKegiatan = formatTanggalID(isoKegiatan);
   const tanggalSurat = formatTanggalID(dateMinusOneDay(isoKegiatan));
@@ -1481,6 +1504,8 @@ const SK_TEMPLATES = {
 };
 
 let skNomorUrut = 1;
+let skPerPersonMode = false;
+let useOldNumbers = false;
 
 async function loadSKCounter(){
   try{
@@ -1506,10 +1531,38 @@ function buildSKNomor(h){
   return `${nomorUrut}/SK/9.11.25/${bulanRomawi}/${tahun}`;
 }
 
-function buildSKHTML(){
+function resolveSuratNomor(row, index, h){
+  if(useOldNumbers && row && row.noSuratLama) return row.noSuratLama;
+  return buildSuratNomor(index, h);
+}
+function resolveSKNomorForIndex(row, index, h){
+  if(useOldNumbers && row && row.noSKLama) return row.noSKLama;
+  return buildSKNomorForIndex(index, h);
+}
+function resolveSKNomorCombined(h){
+  if(useOldNumbers){
+    const withOld = getActiveRows().find(r => r.noSKLama);
+    if(withOld) return withOld.noSKLama;
+  }
+  return buildSKNomor(h);
+}
+
+function buildSKNomorForIndex(index, h){
+  const nomorUrut = String(index + 1).padStart(3, '0');
+  let bulanRomawi = toRomanMonth(new Date().getMonth() + 1);
+  let tahun = new Date().getFullYear();
+  if(h.tglKegiatan){
+    const parts = h.tglKegiatan.split('-').map(Number);
+    if(parts[1]) bulanRomawi = toRomanMonth(parts[1]);
+    if(parts[0]) tahun = parts[0];
+  }
+  return `${nomorUrut}/SK/9.11.25/${bulanRomawi}/${tahun}`;
+}
+
+function buildSKHTML(rowsSubset, nomorOverride){
   const h = gatherHeader();
-  const active = getActiveRows();
-  const nomorSK = buildSKNomor(h);
+  const active = rowsSubset || getActiveRows();
+  const nomorSK = nomorOverride || resolveSKNomorCombined(h);
   const isoKegiatan = h.tglKegiatan || new Date().toISOString().slice(0,10);
   const tanggalPengesahan = formatTanggalID(dateMinusOneDay(isoKegiatan));
   const kegiatanPhraseFull = toActivityPhrase(h.judul2) || h.judul2 || '(nama kegiatan)';
@@ -1836,11 +1889,16 @@ function buildSPBKwitansiPages(){
 
 function buildMasterDocPages(){
   const active = getActiveRows();
+  const h = gatherHeader();
   const pages = [];
   pages.push({html: buildTTHHTML(active), type:'tth'});
   pages.push({html: buildHadirHTML(active), type:'hadir'});
   active.forEach((r,i) => pages.push({html: buildSuratHTML(r, i), type:'surat'}));
-  pages.push({html: buildSKHTML(), type:'sk'});
+  if(skPerPersonMode && active.length > 0){
+    active.forEach((r,i) => pages.push({html: buildSKHTML([r], resolveSKNomorForIndex(r, i, h)), type:'sk'}));
+  } else {
+    pages.push({html: buildSKHTML(), type:'sk'});
+  }
   return pages;
 }
 
@@ -2127,6 +2185,10 @@ el('docTabs').addEventListener('click', e => {
 });
 
 el('skJenisKegiatan').addEventListener('change', renderPreview);
+el('skPerPerson').addEventListener('change', e => {
+  skPerPersonMode = e.target.checked;
+  renderPreview();
+});
 
 el('rekapJenjangFilter').addEventListener('change', renderPreview);
 el('rekapKategoriFilter').addEventListener('change', renderPreview);
@@ -2194,7 +2256,7 @@ function setPrintPageRule(){
 el('btnPrint').addEventListener('click', async () => {
   setPrintPageRule();
   window.print();
-  if(docMode === 'sk'){
+  if(docMode === 'sk' && !skPerPersonMode){
     await bumpSKCounter();
   }
   if(docMode === 'spb'){
@@ -2247,8 +2309,16 @@ el('btnPdf').addEventListener('click', async () => {
     if(docMode === 'rekap'){
       await addCanvasPage(buildRekapHTML(), true);
     } else if(docMode === 'sk'){
-      await addCanvasPage(buildSKHTML(), true);
-      await bumpSKCounter();
+      if(skPerPersonMode){
+        const skActive = getActiveRows();
+        const hh = gatherHeader();
+        for(let i = 0; i < skActive.length; i++){
+          await addCanvasPage(buildSKHTML([skActive[i]], resolveSKNomorForIndex(skActive[i], i, hh)), i === 0);
+        }
+      } else {
+        await addCanvasPage(buildSKHTML(), true);
+        await bumpSKCounter();
+      }
     } else if(docMode === 'spb'){
       const groups = getJenjangGroups();
       for(let i = 0; i < groups.length; i++){
@@ -3145,6 +3215,9 @@ function renderQuickRows(){
       const idx = +e.target.dataset.idx;
       const field = e.target.dataset.qfield;
       quickRows[idx][field] = e.target.value;
+      if(field === 'kategori' && e.target.value && el('skJenisKegiatan')){
+        el('skJenisKegiatan').value = e.target.value;
+      }
     });
   });
   c.querySelectorAll('input[data-qjcheck]').forEach(chk => {
@@ -3304,6 +3377,10 @@ el('btnQuickSubmit').addEventListener('click', () => {
   if(rowWithJenjang){
     updateMataAnggaranAndJudul(rowWithJenjang.jenjang);
   }
+  const rowWithKategori = validRows.find(r => r.kategori);
+  if(rowWithKategori && el('skJenisKegiatan')){
+    el('skJenisKegiatan').value = rowWithKategori.kategori;
+  }
   perPageMode = true;
   el('f_perpage').checked = true;
   el('perPageNote').style.display = 'block';
@@ -3404,25 +3481,47 @@ el('btnGoogleLogin').addEventListener('click', () => {
 });
 
 async function uploadToGoogleDrive(blob, filename){
-  if(!googleAccessToken) return false;
+  if(!googleAccessToken) return {ok:false, error:'Belum login Google.'};
   const metadata = { name: filename, parents: [DRIVE_FOLDER_ID] };
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
-  form.append('file', blob);
+  const boundary = 'mubarrak_boundary_' + Date.now();
+  const fileArrayBuffer = await blob.arrayBuffer();
+
+  const metadataPart =
+    `--${boundary}\r\n` +
+    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify(metadata) + `\r\n`;
+  const mediaHeader =
+    `--${boundary}\r\n` +
+    `Content-Type: ${blob.type || 'application/octet-stream'}\r\n\r\n`;
+  const closing = `\r\n--${boundary}--`;
+
+  const encoder = new TextEncoder();
+  const metadataBytes = encoder.encode(metadataPart);
+  const mediaHeaderBytes = encoder.encode(mediaHeader);
+  const closingBytes = encoder.encode(closing);
+
+  const body = new Blob([metadataBytes, mediaHeaderBytes, fileArrayBuffer, closingBytes]);
+
   try{
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,parents', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + googleAccessToken },
-      body: form
+      headers: {
+        'Authorization': 'Bearer ' + googleAccessToken,
+        'Content-Type': `multipart/related; boundary=${boundary}`
+      },
+      body: body
     });
     if(!res.ok){
+      const errText = await res.text().catch(() => '');
+      console.error('Drive upload failed:', res.status, errText);
       if(res.status === 401){ googleAccessToken = null; updateGoogleLoginUI(false); }
-      return false;
+      return {ok:false, error: `HTTP ${res.status}: ${errText.slice(0,300)}`};
     }
-    return true;
+    const data = await res.json();
+    return {ok:true, data};
   }catch(e){
     console.error(e);
-    return false;
+    return {ok:false, error: String(e)};
   }
 }
 
@@ -3433,7 +3532,7 @@ async function exportDatabaseExcel(){
     return;
   }
   const kegiatanUtama = toActivityPhrase(h.judul2) || h.judul2 || '';
-  const noSK = buildSKNomor(h);
+  const noSKCombined = resolveSKNomorCombined(h);
 
   const newRecords = rows.map((r, i) => {
     const {totalKotor, pphAmt} = computeRow(r);
@@ -3449,9 +3548,9 @@ async function exportDatabaseExcel(){
       tglIso: isoTgl,
       tgl: isoTgl ? formatTanggalID(isoTgl) : '',
       jenjang: JENJANG_MAP[r.jenjang] || '',
-      noSurat: buildSuratNomor(i, h),
+      noSurat: resolveSuratNomor(r, i, h),
       tglSurat: isoTgl ? formatTanggalID(dateMinusOneDay(isoTgl)) : '',
-      noSK: noSK,
+      noSK: skPerPersonMode ? resolveSKNomorForIndex(r, i, h) : noSKCombined,
       dicatat: new Date().toISOString()
     };
   });
@@ -3505,11 +3604,11 @@ async function exportDatabaseExcel(){
   saveAs(blob, filename);
 
   if(googleAccessToken){
-    const uploaded = await uploadToGoogleDrive(blob, filename);
-    if(uploaded){
+    const result = await uploadToGoogleDrive(blob, filename);
+    if(result.ok){
       alert('File juga berhasil ter-upload otomatis ke folder BENDAHARA HUS di Google Drive.');
     } else {
-      alert('Upload otomatis ke Drive gagal (mungkin sesi login sudah habis). File tetap terunduh — silakan upload manual, atau klik "Login Google" lagi.');
+      alert('Upload otomatis ke Drive gagal.\n\nDetail error: ' + result.error + '\n\nFile tetap terunduh — silakan upload manual, atau klik "Login Google" lagi.');
       window.open('https://drive.google.com/drive/folders/1v0V9upxoTfFgPbdaMpcgRZfSc44GJH-Q', '_blank');
     }
   } else {
@@ -3519,6 +3618,91 @@ async function exportDatabaseExcel(){
 }
 
 el('btnExportDatabase').addEventListener('click', exportDatabaseExcel);
+
+el('useOldNumbersCheckbox').addEventListener('change', e => {
+  useOldNumbers = e.target.checked;
+  renderPreview();
+});
+
+el('btnImportDatabase').addEventListener('click', () => {
+  el('importDatabaseInput').click();
+});
+
+el('importDatabaseInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const arrayBuffer = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(arrayBuffer);
+    const ws = wb.worksheets[0];
+    if(!ws){ alert('File Excel tidak terbaca atau kosong.'); return; }
+
+    const parsedRows = [];
+    let firstKegiatan = '', firstTanggalIso = '';
+
+    ws.eachRow((row, rowNumber) => {
+      if(rowNumber === 1) return; // skip header
+      const vals = row.values; // 1-indexed array: [empty, No, Kegiatan, Nama, Honor, Pajak, Tgl, Jenjang, NoSurat, TglSurat, NoSK]
+      const kegiatan = (vals[2] || '').toString().trim();
+      const nama = (vals[3] || '').toString().trim();
+      if(!nama) return;
+      const honor = parseFloat(vals[4]) || 0;
+      const pajak = parseFloat(vals[5]) || 0;
+      const tglText = (vals[6] || '').toString().trim();
+      const jenjangText = (vals[7] || '').toString().trim();
+      const noSuratLama = (vals[8] || '').toString().trim();
+      const noSKLama = (vals[10] || '').toString().trim();
+
+      let tglIso = '';
+      const m = tglText.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
+      if(m){
+        const bulanIdx = BULAN_INDO.findIndex(b => b.toLowerCase() === m[2].toLowerCase());
+        if(bulanIdx >= 0) tglIso = `${m[3]}-${String(bulanIdx+1).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+      }
+
+      const pph = honor > 0 ? Math.round((pajak / honor) * 1000) / 10 : 5;
+
+      if(!firstKegiatan && kegiatan) firstKegiatan = kegiatan;
+      if(!firstTanggalIso && tglIso) firstTanggalIso = tglIso;
+
+      parsedRows.push({
+        nama, org: '', jabatan: 'Instruktur',
+        rate: honor, oj: 1, pph: pph,
+        jenjang: jenjangTeksKeKode(jenjangText),
+        tanggal: tglIso,
+        kegiatan: kegiatan && kegiatan !== firstKegiatan ? kegiatan : '',
+        noSuratLama: noSuratLama || null,
+        noSKLama: noSKLama || null
+      });
+    });
+
+    if(parsedRows.length === 0){
+      alert('Tidak ada data narasumber yang terbaca dari file ini. Pastikan file sesuai format Database Excel dari aplikasi ini.');
+      return;
+    }
+
+    rows = parsedRows;
+    if(firstKegiatan){
+      el('f_judul2').value = /^DALAM RANGKA/i.test(firstKegiatan) ? firstKegiatan.toUpperCase() : ('DALAM RANGKA KEGIATAN ' + firstKegiatan.toUpperCase());
+    }
+    if(firstTanggalIso){
+      el('f_tgl_kegiatan').value = firstTanggalIso;
+      syncKegiatanDate();
+    }
+    renderRows();
+    renderPreview();
+    const numberNote = useOldNumbers
+      ? ' Nomor Surat & SK lama akan dipakai ulang sesuai yang tercatat di file (opsi sedang aktif).'
+      : ' Nomor Surat & SK akan dibuat baru mengikuti pengaturan saat ini (centang "Gunakan nomor lama" kalau mau pakai nomor asli dari file).';
+    alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang.`);
+  }catch(err){
+    console.error(err);
+    alert('Gagal membaca file. Pastikan file .xlsx yang diunggah adalah hasil Ekspor Database Excel dari aplikasi ini.');
+  }finally{
+    e.target.value = '';
+  }
+});
 
 el('btnClearDatabase').addEventListener('click', async () => {
   if(!confirm('Hapus semua data yang sudah terkumpul di database? Tindakan ini tidak bisa dibatalkan.')) return;
