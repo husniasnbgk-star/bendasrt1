@@ -444,6 +444,7 @@ Siti Aminah, SD</pre>
     <button class="btn-outline" id="btnSettings">⚙️ Pengaturan Tampilan</button>
     <button class="btn-gold" id="btnExportDatabase">📁 Ekspor Database Excel</button>
     <button class="btn-outline" id="btnImportDatabase">📂 Muat Ulang dari Database Excel</button>
+    <button class="btn-outline" id="btnImportFromDrive">☁️ Muat dari Google Drive</button>
     <input type="file" id="importDatabaseInput" accept=".xlsx" style="display:none;">
     <label class="jchk" style="display:inline-flex;align-items:center;gap:6px;background:#fff;">
       <input type="checkbox" id="useOldNumbersCheckbox" style="width:auto;">
@@ -659,6 +660,22 @@ Siti Aminah, SD</pre>
     </div>
     <div class="riwayat-table-wrap">
       <table class="riwayat-table" id="riwayatTable"></table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="driveImportOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Muat Database dari Google Drive</h2>
+      <button class="btn-ghost" id="btnCloseDriveImport">Tutup</button>
+    </div>
+    <div class="modal-sub">Pilih file Database Excel dari folder BENDAHARA HUS di Google Drive untuk dimuat ulang ke aplikasi.</div>
+    <div id="driveImportStatus" class="small-note" style="margin:10px 0;"></div>
+    <div class="field" id="driveFileListWrap" style="display:none;">
+      <label>Pilih File</label>
+      <select id="driveFileSelect"></select>
+      <button class="btn-gold" id="btnLoadSelectedDriveFile" style="margin-top:12px;">Muat File Ini</button>
     </div>
   </div>
 </div>
@@ -3590,6 +3607,30 @@ el('btnGoogleLogin').addEventListener('click', () => {
   googleTokenClient.requestAccessToken();
 });
 
+async function listDriveDatabaseFiles(){
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q='${DRIVE_FOLDER_ID}'+in+parents+and+trashed=false&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=50`,
+    { headers: { 'Authorization': 'Bearer ' + googleAccessToken } }
+  );
+  if(!res.ok){
+    const errText = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${errText.slice(0,300)}`);
+  }
+  const data = await res.json();
+  return (data.files || []).filter(f => /\.xlsx$/i.test(f.name));
+}
+
+async function downloadDriveFileBuffer(fileId){
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { 'Authorization': 'Bearer ' + googleAccessToken }
+  });
+  if(!res.ok){
+    const errText = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${errText.slice(0,300)}`);
+  }
+  return await res.arrayBuffer();
+}
+
 async function uploadToGoogleDrive(blob, filename){
   if(!googleAccessToken) return {ok:false, error:'Belum login Google.'};
   const metadata = { name: filename, parents: [DRIVE_FOLDER_ID] };
@@ -3734,6 +3775,119 @@ el('useOldNumbersCheckbox').addEventListener('change', e => {
   renderPreview();
 });
 
+async function processImportedWorkbookBuffer(arrayBuffer){
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(arrayBuffer);
+  const ws = wb.worksheets[0];
+  if(!ws){ alert('File Excel tidak terbaca atau kosong.'); return; }
+
+  const parsedRows = [];
+  let firstKegiatan = '', firstTanggalIso = '';
+
+  ws.eachRow((row, rowNumber) => {
+    if(rowNumber === 1) return; // skip header
+    const vals = row.values; // 1-indexed array: [empty, No, Kegiatan, Nama, Honor, Pajak, Tgl, Jenjang, NoSurat, TglSurat, NoSK]
+    const kegiatan = (vals[2] || '').toString().trim();
+    const nama = (vals[3] || '').toString().trim();
+    if(!nama) return;
+    const honor = parseFloat(vals[4]) || 0;
+    const pajak = parseFloat(vals[5]) || 0;
+    const tglText = (vals[6] || '').toString().trim();
+    const jenjangText = (vals[7] || '').toString().trim();
+    const noSuratLama = (vals[8] || '').toString().trim();
+    const noSKLama = (vals[10] || '').toString().trim();
+
+    let tglIso = '';
+    const m = tglText.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
+    if(m){
+      const bulanIdx = BULAN_INDO.findIndex(b => b.toLowerCase() === m[2].toLowerCase());
+      if(bulanIdx >= 0) tglIso = `${m[3]}-${String(bulanIdx+1).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+    }
+
+    const pph = honor > 0 ? Math.round((pajak / honor) * 1000) / 10 : 5;
+
+    if(!firstKegiatan && kegiatan) firstKegiatan = kegiatan;
+    if(!firstTanggalIso && tglIso) firstTanggalIso = tglIso;
+
+    parsedRows.push({
+      nama, org: '', jabatan: 'Instruktur',
+      rate: honor, oj: 1, pph: pph,
+      jenjang: jenjangTeksKeKode(jenjangText),
+      tanggal: tglIso,
+      kegiatan: kegiatan && kegiatan !== firstKegiatan ? kegiatan : '',
+      noSuratLama: noSuratLama || null,
+      noSKLama: noSKLama || null
+    });
+  });
+
+  if(parsedRows.length === 0){
+    alert('Tidak ada data narasumber yang terbaca dari file ini. Pastikan file sesuai format Database Excel dari aplikasi ini.');
+    return;
+  }
+
+  rows = parsedRows;
+  if(firstKegiatan){
+    el('f_judul2').value = /^DALAM RANGKA/i.test(firstKegiatan) ? firstKegiatan.toUpperCase() : ('DALAM RANGKA KEGIATAN ' + firstKegiatan.toUpperCase());
+  }
+  if(firstTanggalIso){
+    el('f_tgl_kegiatan').value = firstTanggalIso;
+    syncKegiatanDate();
+  }
+  renderRows();
+  renderPreview();
+  const numberNote = useOldNumbers
+    ? ' Nomor Surat & SK lama akan dipakai ulang sesuai yang tercatat di file (opsi sedang aktif).'
+    : ' Nomor Surat & SK akan dibuat baru mengikuti pengaturan saat ini (centang "Gunakan nomor lama" kalau mau pakai nomor asli dari file).';
+  alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang.`);
+}
+
+el('btnImportFromDrive').addEventListener('click', async () => {
+  if(!googleAccessToken){
+    alert('Silakan login Google dulu lewat tombol "Login Google & Upload Otomatis" sebelum memuat data dari Drive.');
+    return;
+  }
+  el('driveImportOverlay').classList.add('open');
+  el('driveFileListWrap').style.display = 'none';
+  const status = el('driveImportStatus');
+  status.textContent = 'Mengambil daftar file dari folder BENDAHARA HUS...';
+  try{
+    const files = await listDriveDatabaseFiles();
+    if(files.length === 0){
+      status.textContent = 'Belum ada file Database Excel di folder BENDAHARA HUS.';
+      return;
+    }
+    const sel = el('driveFileSelect');
+    sel.innerHTML = files.map(f => `<option value="${f.id}">${f.name} (${new Date(f.modifiedTime).toLocaleString('id-ID')})</option>`).join('');
+    status.textContent = `Ditemukan ${files.length} file. Pilih salah satu di bawah.`;
+    el('driveFileListWrap').style.display = 'block';
+  }catch(err){
+    console.error(err);
+    status.textContent = 'Gagal mengambil daftar file. Detail: ' + err.message;
+  }
+});
+
+el('btnCloseDriveImport').addEventListener('click', () => {
+  el('driveImportOverlay').classList.remove('open');
+});
+el('driveImportOverlay').addEventListener('click', e => {
+  if(e.target.id === 'driveImportOverlay') el('driveImportOverlay').classList.remove('open');
+});
+
+el('btnLoadSelectedDriveFile').addEventListener('click', async () => {
+  const fileId = el('driveFileSelect').value;
+  if(!fileId) return;
+  const status = el('driveImportStatus');
+  status.textContent = 'Mengunduh dan memuat file...';
+  try{
+    const buffer = await downloadDriveFileBuffer(fileId);
+    await processImportedWorkbookBuffer(buffer);
+    el('driveImportOverlay').classList.remove('open');
+  }catch(err){
+    console.error(err);
+    status.textContent = 'Gagal memuat file. Detail: ' + err.message;
+  }
+});
+
 el('btnImportDatabase').addEventListener('click', () => {
   el('importDatabaseInput').click();
 });
@@ -3743,69 +3897,7 @@ el('importDatabaseInput').addEventListener('change', async (e) => {
   if(!file) return;
   try{
     const arrayBuffer = await file.arrayBuffer();
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(arrayBuffer);
-    const ws = wb.worksheets[0];
-    if(!ws){ alert('File Excel tidak terbaca atau kosong.'); return; }
-
-    const parsedRows = [];
-    let firstKegiatan = '', firstTanggalIso = '';
-
-    ws.eachRow((row, rowNumber) => {
-      if(rowNumber === 1) return; // skip header
-      const vals = row.values; // 1-indexed array: [empty, No, Kegiatan, Nama, Honor, Pajak, Tgl, Jenjang, NoSurat, TglSurat, NoSK]
-      const kegiatan = (vals[2] || '').toString().trim();
-      const nama = (vals[3] || '').toString().trim();
-      if(!nama) return;
-      const honor = parseFloat(vals[4]) || 0;
-      const pajak = parseFloat(vals[5]) || 0;
-      const tglText = (vals[6] || '').toString().trim();
-      const jenjangText = (vals[7] || '').toString().trim();
-      const noSuratLama = (vals[8] || '').toString().trim();
-      const noSKLama = (vals[10] || '').toString().trim();
-
-      let tglIso = '';
-      const m = tglText.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
-      if(m){
-        const bulanIdx = BULAN_INDO.findIndex(b => b.toLowerCase() === m[2].toLowerCase());
-        if(bulanIdx >= 0) tglIso = `${m[3]}-${String(bulanIdx+1).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
-      }
-
-      const pph = honor > 0 ? Math.round((pajak / honor) * 1000) / 10 : 5;
-
-      if(!firstKegiatan && kegiatan) firstKegiatan = kegiatan;
-      if(!firstTanggalIso && tglIso) firstTanggalIso = tglIso;
-
-      parsedRows.push({
-        nama, org: '', jabatan: 'Instruktur',
-        rate: honor, oj: 1, pph: pph,
-        jenjang: jenjangTeksKeKode(jenjangText),
-        tanggal: tglIso,
-        kegiatan: kegiatan && kegiatan !== firstKegiatan ? kegiatan : '',
-        noSuratLama: noSuratLama || null,
-        noSKLama: noSKLama || null
-      });
-    });
-
-    if(parsedRows.length === 0){
-      alert('Tidak ada data narasumber yang terbaca dari file ini. Pastikan file sesuai format Database Excel dari aplikasi ini.');
-      return;
-    }
-
-    rows = parsedRows;
-    if(firstKegiatan){
-      el('f_judul2').value = /^DALAM RANGKA/i.test(firstKegiatan) ? firstKegiatan.toUpperCase() : ('DALAM RANGKA KEGIATAN ' + firstKegiatan.toUpperCase());
-    }
-    if(firstTanggalIso){
-      el('f_tgl_kegiatan').value = firstTanggalIso;
-      syncKegiatanDate();
-    }
-    renderRows();
-    renderPreview();
-    const numberNote = useOldNumbers
-      ? ' Nomor Surat & SK lama akan dipakai ulang sesuai yang tercatat di file (opsi sedang aktif).'
-      : ' Nomor Surat & SK akan dibuat baru mengikuti pengaturan saat ini (centang "Gunakan nomor lama" kalau mau pakai nomor asli dari file).';
-    alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang.`);
+    await processImportedWorkbookBuffer(arrayBuffer);
   }catch(err){
     console.error(err);
     alert('Gagal membaca file. Pastikan file .xlsx yang diunggah adalah hasil Ekspor Database Excel dari aplikasi ini.');
