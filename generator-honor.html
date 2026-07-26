@@ -2108,12 +2108,9 @@ function buildRekapHTML(){
       subKotor += totalKotor; subPph += pphAmt; subBersih += bersih;
       return `<tr style="height:26px;">
         <td class="center-cell">${i+1}</td>
+        <td class="center-cell">${r.jabatan||'Instruktur'}</td>
         <td class="nama-cell">${r.nama}</td>
-        <td>${r.org || '-'}</td>
-        <td class="center-cell">${r.jabatan}</td>
         <td class="center-cell">${r.tanggal ? formatTanggalID(r.tanggal) : '-'}</td>
-        <td class="num-cell">${fmt(r.rate)}</td>
-        <td class="center-cell">${r.oj}</td>
         <td class="num-cell">${fmt(totalKotor)}</td>
         <td class="num-cell">${fmt(pphAmt)}</td>
         <td class="num-cell">${fmt(bersih)}</td>
@@ -2121,10 +2118,10 @@ function buildRekapHTML(){
     }).join('');
     grandKotor += subKotor; grandPph += subPph; grandBersih += subBersih; grandCount += list.length;
     bodyHTML += `
-      <tr><td colspan="10" style="font-weight:700;padding:7px 8px;background:#F1F3F6;">${groupLabels[key]} — ${list.length} narasumber</td></tr>
+      <tr><td colspan="7" style="font-weight:700;padding:7px 8px;background:#F1F3F6;">${groupLabels[key]} — ${list.length} narasumber</td></tr>
       ${rowsHTML}
       <tr class="total-row">
-        <td colspan="7" class="center-cell">Subtotal ${groupLabels[key]}</td>
+        <td colspan="4" class="center-cell">Subtotal ${groupLabels[key]}</td>
         <td class="num-cell">${fmt(subKotor)}</td>
         <td class="num-cell">${fmt(subPph)}</td>
         <td class="num-cell">${fmt(subBersih)}</td>
@@ -2137,33 +2134,40 @@ function buildRekapHTML(){
   if(kategoriFilter !== 'ALL') filterLabels.push(KATEGORI_LABELS[kategoriFilter] || kategoriFilter);
   if(tanggalFilter !== 'ALL') filterLabels.push(formatTanggalID(tanggalFilter));
   const groupByLabel = {jenjang:'Per Jenjang', kategori:'Per Kategori', tanggal:'Per Tanggal (Momen)', minggu:'Per Minggu', bulan:'Per Bulan', tahun:'Per Tahun'}[groupBy];
-  const filterText = (filterLabels.length ? ` (Filter: ${filterLabels.join(', ')})` : ' (Semua Data)') + ` — ${groupByLabel}`;
+  const filterText = (filterLabels.length ? ` (Filter: ${filterLabels.join(', ')})` : '') + ` — ${groupByLabel}`;
+  const pphPersen = el('f_pphdefault') ? el('f_pphdefault').value : '5';
 
   return `
   <div class="doc-rekap">
   <table class="doc-table">
     <colgroup>
-      <col style="width:4%;"><col style="width:16%;"><col style="width:13%;"><col style="width:10%;">
-      <col style="width:11%;"><col style="width:10%;"><col style="width:5%;"><col style="width:11%;">
-      <col style="width:9%;"><col style="width:11%;">
+      <col style="width:5%;"><col style="width:14%;"><col style="width:23%;"><col style="width:15%;">
+      <col style="width:15%;"><col style="width:13%;"><col style="width:15%;">
     </colgroup>
-    <tr><td class="kop-left" colspan="10" style="border:none;">${h.kop1}<br>${h.kop2}</td></tr>
-    <tr><td class="title-block" colspan="10">REKAPITULASI DATA NARASUMBER${filterText}<br>${h.judul2}</td></tr>
+    <tr>
+      <td class="kop-left" colspan="4" style="border:none;">${h.kop1}<br>${h.kop2}</td>
+      <td colspan="3" style="padding:0;border:none;">
+        <table style="width:100%;border:none;border-collapse:collapse;">
+          <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">No. Bukti Kas</td><td style="border:none;padding:2px 6px;">: ${h.bukti||''}</td></tr>
+          <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Tgl. Pembukuan</td><td style="border:none;padding:2px 6px;">: ${h.tglbuku||''}</td></tr>
+          <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Mata Anggaran</td><td style="border:none;padding:2px 6px;">: ${h.ma||''}</td></tr>
+          <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Tahun Anggaran</td><td style="border:none;padding:2px 6px;">: ${h.ta||''}</td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr><td class="title-block" colspan="7">NOMINATIF HONOR INSTRUKTUR${filterText}<br>${h.judul2}<br>${h.judul3}</td></tr>
     <tr>
       <th class="th-cell">NO</th>
+      <th class="th-cell">INSTRUKTUR</th>
       <th class="th-cell">NAMA</th>
-      <th class="th-cell">ORGANISASI /<br>INSTANSI</th>
-      <th class="th-cell">JABATAN</th>
-      <th class="th-cell">TANGGAL<br>KEGIATAN</th>
-      <th class="th-cell">HONOR / OJ<br>(Rp)</th>
-      <th class="th-cell">OJ</th>
+      <th class="th-cell">TANGGAL</th>
       <th class="th-cell">JUMLAH<br>KOTOR (Rp)</th>
-      <th class="th-cell">Pph 21</th>
+      <th class="th-cell">Pph 21<br>(${pphPersen}%)</th>
       <th class="th-cell">JUMLAH<br>BERSIH (Rp)</th>
     </tr>
-    ${bodyHTML || `<tr><td colspan="10" class="center-cell" style="padding:20px;color:#8A93A3;font-style:italic;">Tidak ada data narasumber sesuai filter yang dipilih.</td></tr>`}
+    ${bodyHTML || `<tr><td colspan="7" class="center-cell" style="padding:20px;color:#8A93A3;font-style:italic;">Tidak ada data narasumber sesuai filter yang dipilih.</td></tr>`}
     <tr class="total-row">
-      <td colspan="7" class="center-cell">TOTAL KESELURUHAN — ${grandCount} narasumber</td>
+      <td colspan="4" class="center-cell">TOTAL KESELURUHAN — ${grandCount} narasumber</td>
       <td class="num-cell">${fmt(grandKotor)}</td>
       <td class="num-cell">${fmt(grandPph)}</td>
       <td class="num-cell">${fmt(grandBersih)}</td>
@@ -2551,7 +2555,7 @@ async function exportExcelRekap(){
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Rekap', {pageSetup:{orientation:'landscape', fitToPage:true, fitToWidth:1, paperSize:9, margins:{left:0.98,right:0.98,top:0.98,bottom:0.98,header:0,footer:0}}});
-  ws.columns = [{width:5},{width:22},{width:18},{width:14},{width:16},{width:14},{width:13},{width:6},{width:14},{width:11},{width:14}];
+  ws.columns = [{width:5},{width:16},{width:26},{width:16},{width:16},{width:13},{width:16}];
   const thin = {style:'thin', color:{argb:'FF444444'}};
   const border = {top:thin,left:thin,bottom:thin,right:thin};
   function setCell(addr, value, opts={}){
@@ -2564,20 +2568,25 @@ async function exportExcelRekap(){
     return c;
   }
 
-  ws.mergeCells('A1:K2');
-  setCell('A1', `${h.kop1}\n${h.kop2}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}, border:false});
+  ws.mergeCells('A1:D2');
+  setCell('A1', `${h.kop1}\n${h.kop2}`, {font:{bold:true,size:12}, alignment:{horizontal:'left', vertical:'middle', wrapText:true}, border:false});
+  ws.mergeCells('E1:E1'); setCell('E1','No. Bukti Kas', {alignment:{horizontal:'left'}, border:false});
+  ws.mergeCells('F1:G1'); setCell('F1',': ' + (h.bukti||''), {alignment:{horizontal:'left'}, border:false});
+  ws.mergeCells('E2:E2'); setCell('E2','Tgl. Pembukuan', {alignment:{horizontal:'left'}, border:false});
+  ws.mergeCells('F2:G2'); setCell('F2',': ' + (h.tglbuku||''), {alignment:{horizontal:'left'}, border:false});
 
   const filterLabels = [];
   if(jenjangFilter !== 'ALL') filterLabels.push(jenjangLabels[jenjangFilter] || jenjangFilter);
   if(kategoriFilter !== 'ALL') filterLabels.push(KATEGORI_LABELS[kategoriFilter] || kategoriFilter);
   if(tanggalFilter !== 'ALL') filterLabels.push(formatTanggalID(tanggalFilter));
   const groupByLabel = {jenjang:'Per Jenjang', kategori:'Per Kategori', tanggal:'Per Tanggal (Momen)', minggu:'Per Minggu', bulan:'Per Bulan', tahun:'Per Tahun'}[groupBy];
-  const filterText = (filterLabels.length ? ` (Filter: ${filterLabels.join(', ')})` : ' (Semua Data)') + ` — ${groupByLabel}`;
-  ws.mergeCells('A4:K4');
-  setCell('A4', `REKAPITULASI DATA NARASUMBER${filterText}\n${h.judul2}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
-  ws.getRow(4).height = 40;
+  const filterText = (filterLabels.length ? ` (Filter: ${filterLabels.join(', ')})` : '') + ` — ${groupByLabel}`;
+  ws.mergeCells('A4:G4');
+  setCell('A4', `NOMINATIF HONOR INSTRUKTUR${filterText}\n${h.judul2}\n${h.judul3}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
+  ws.getRow(4).height = 50;
 
-  const headers = ['NO','NAMA','ORGANISASI / INSTANSI','JABATAN','KELOMPOK','TANGGAL KEGIATAN','JENJANG','OJ','JUMLAH KOTOR (Rp)','Pph 21','JUMLAH BERSIH (Rp)'];
+  const pphPersen = el('f_pphdefault') ? el('f_pphdefault').value : '5';
+  const headers = ['NO','INSTRUKTUR','NAMA','TANGGAL','JUMLAH KOTOR (Rp)',`Pph 21 (${pphPersen}%)`,'JUMLAH BERSIH (Rp)'];
   headers.forEach((hd, i) => {
     const c = ws.getCell(6, i+1);
     c.value = hd; c.font = {bold:true,size:10.5}; c.alignment = {horizontal:'center', vertical:'middle', wrapText:true}; c.border = border;
@@ -2627,29 +2636,28 @@ async function exportExcelRekap(){
   groupOrder.forEach(key => {
     const list = groups[key];
     if(!list || list.length === 0) return;
+    ws.mergeCells(`A${r}:G${r}`);
+    setCell(`A${r}`, `${groupLabels[key]} — ${list.length} narasumber`, {font:{bold:true}, alignment:{horizontal:'left'}});
+    r++;
     list.forEach(row => {
       const {totalKotor, pphAmt, bersih} = computeRow(row);
       grandKotor += totalKotor; grandPph += pphAmt; grandBersih += bersih; grandCount++;
       setCell(`A${r}`, no++, {alignment:{horizontal:'center'}});
-      setCell(`B${r}`, row.nama);
-      setCell(`C${r}`, row.org || '-');
-      setCell(`D${r}`, row.jabatan, {alignment:{horizontal:'center'}});
-      setCell(`E${r}`, groupLabels[key], {alignment:{horizontal:'center'}});
-      setCell(`F${r}`, row.tanggal ? formatTanggalID(row.tanggal) : '-', {alignment:{horizontal:'center'}});
-      setCell(`G${r}`, jenjangLabels[row.jenjang] || '-', {alignment:{horizontal:'center'}});
-      setCell(`H${r}`, row.oj, {alignment:{horizontal:'center'}});
-      setCell(`I${r}`, totalKotor, {alignment:{horizontal:'right'}, numFmt:'#,##0'});
-      setCell(`J${r}`, pphAmt, {alignment:{horizontal:'right'}, numFmt:'#,##0'});
-      setCell(`K${r}`, bersih, {alignment:{horizontal:'right'}, numFmt:'#,##0'});
+      setCell(`B${r}`, row.jabatan || 'Instruktur', {alignment:{horizontal:'center'}});
+      setCell(`C${r}`, row.nama);
+      setCell(`D${r}`, row.tanggal ? formatTanggalID(row.tanggal) : '-', {alignment:{horizontal:'center'}});
+      setCell(`E${r}`, totalKotor, {alignment:{horizontal:'right'}, numFmt:'#,##0'});
+      setCell(`F${r}`, pphAmt, {alignment:{horizontal:'right'}, numFmt:'#,##0'});
+      setCell(`G${r}`, bersih, {alignment:{horizontal:'right'}, numFmt:'#,##0'});
       r++;
     });
   });
 
-  ws.mergeCells(`A${r}:H${r}`);
+  ws.mergeCells(`A${r}:D${r}`);
   setCell(`A${r}`, `TOTAL KESELURUHAN — ${grandCount} narasumber`, {font:{bold:true}, alignment:{horizontal:'center'}});
-  setCell(`I${r}`, grandKotor, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
-  setCell(`J${r}`, grandPph, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
-  setCell(`K${r}`, grandBersih, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
+  setCell(`E${r}`, grandKotor, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
+  setCell(`F${r}`, grandPph, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
+  setCell(`G${r}`, grandBersih, {font:{bold:true}, alignment:{horizontal:'right'}, numFmt:'#,##0'});
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/octet-stream'});
