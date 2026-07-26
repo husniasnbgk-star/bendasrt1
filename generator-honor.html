@@ -574,6 +574,7 @@ Siti Aminah, SD</pre>
       <div class="field"><label>Filter Kategori Kegiatan</label>
         <select id="rekapKategoriFilter">
           <option value="ALL">Semua Kategori</option>
+          <option value="MPLS">Masa Pengenalan Lingkungan Sekolah (MPLS)</option>
           <option value="BARIS_BERBARIS">Baris Berbaris (PBB)</option>
           <option value="KEROHANIAN">Kerohanian</option>
           <option value="PANTONIM">Pantonim</option>
@@ -614,6 +615,7 @@ Siti Aminah, SD</pre>
     <div class="rekap-filters" id="skFilters" style="display:none;">
       <div class="field" style="min-width:320px;"><label>Jenis Kegiatan / Ekstrakurikuler untuk SK</label>
         <select id="skJenisKegiatan">
+          <option value="MPLS">Masa Pengenalan Lingkungan Sekolah (MPLS)</option>
           <option value="BARIS_BERBARIS">Baris Berbaris (PBB)</option>
           <option value="KEROHANIAN">Kerohanian</option>
           <option value="PANTONIM">Pantonim</option>
@@ -843,6 +845,7 @@ function renderRows(){
         <label>Kategori Kegiatan (untuk rekapan — opsional)</label>
         <select data-field="kategori" data-idx="${i}">
           <option value="" ${!r.kategori?'selected':''}>— Belum dipilih —</option>
+          <option value="MPLS" ${r.kategori==='MPLS'?'selected':''}>Masa Pengenalan Lingkungan Sekolah (MPLS)</option>
           <option value="BARIS_BERBARIS" ${r.kategori==='BARIS_BERBARIS'?'selected':''}>Baris Berbaris (PBB)</option>
           <option value="KEROHANIAN" ${r.kategori==='KEROHANIAN'?'selected':''}>Kerohanian</option>
           <option value="PANTONIM" ${r.kategori==='PANTONIM'?'selected':''}>Pantonim</option>
@@ -1339,6 +1342,18 @@ function buildSuratHTML(row, index){
 }
 
 const SK_TEMPLATES = {
+  MPLS: {
+    label: 'Masa Pengenalan Lingkungan Sekolah (MPLS)',
+    menimbang: 'mengenalkan lingkungan sekolah, membina kedisiplinan awal, dan mempersiapkan adaptasi peserta didik baru melalui kegiatan Masa Pengenalan Lingkungan Sekolah (MPLS)',
+    kedua: [
+      'Menyusun jadwal dan materi kegiatan MPLS sesuai pedoman yang berlaku.',
+      'Mengenalkan lingkungan, tata tertib, dan budaya sekolah kepada peserta didik baru.',
+      'Membina kedisiplinan awal dan kesiapan mental peserta didik dalam mengikuti pembelajaran.',
+      'Memfasilitasi kegiatan pengenalan guru, staf, dan fasilitas sekolah.',
+      'Berkoordinasi dengan wali kelas dan pihak terkait dalam pelaksanaan kegiatan.',
+      'Menyusun laporan pelaksanaan kegiatan kepada Kepala Sekolah secara berkala.'
+    ]
+  },
   BARIS_BERBARIS: {
     label: 'Baris Berbaris (PBB)',
     menimbang: 'mengembangkan kedisiplinan, kekompakan, ketegasan sikap, dan jiwa kepemimpinan peserta didik melalui kegiatan Baris-Berbaris (PBB)',
@@ -1998,6 +2013,7 @@ function populateRekapTanggalFilter(){
 }
 
 const KATEGORI_LABELS = {
+  MPLS:'Masa Pengenalan Lingkungan Sekolah (MPLS)',
   BARIS_BERBARIS:'Baris Berbaris (PBB)', KEROHANIAN:'Kerohanian', PANTONIM:'Pantonim',
   PIDATO_KOREA:'Pidato Bahasa Korea', TARI:'Tari', PRAMUKA:'Pramuka', SEPAKBOLA:'Sepakbola',
   TAEKWONDO:'Taekwondo', ELITE_STUDENT:'Elite Student', PADUAN_SUARA:'Paduan Suara',
@@ -2069,7 +2085,7 @@ function buildRekapHTML(){
 
   let groupOrder, groupLabels, keyFn;
   if(groupBy === 'kategori'){
-    groupOrder = ['BARIS_BERBARIS','KEROHANIAN','PANTONIM','PIDATO_KOREA','TARI','PRAMUKA','SEPAKBOLA','TAEKWONDO','ELITE_STUDENT','PADUAN_SUARA','FUTSAL','LITERASI','BADMINTON','LAINNYA','NONE'];
+    groupOrder = ['MPLS','BARIS_BERBARIS','KEROHANIAN','PANTONIM','PIDATO_KOREA','TARI','PRAMUKA','SEPAKBOLA','TAEKWONDO','ELITE_STUDENT','PADUAN_SUARA','FUTSAL','LITERASI','BADMINTON','LAINNYA','NONE'];
     groupLabels = KATEGORI_LABELS;
     keyFn = r => r.kategori || 'NONE';
   } else if(groupBy === 'tanggal'){
@@ -2664,7 +2680,7 @@ async function exportExcelRekap(){
 
   let groupOrder, groupLabels, keyFn;
   if(groupBy === 'kategori'){
-    groupOrder = ['BARIS_BERBARIS','KEROHANIAN','PANTONIM','PIDATO_KOREA','TARI','PRAMUKA','SEPAKBOLA','TAEKWONDO','ELITE_STUDENT','PADUAN_SUARA','FUTSAL','LITERASI','BADMINTON','LAINNYA','NONE'];
+    groupOrder = ['MPLS','BARIS_BERBARIS','KEROHANIAN','PANTONIM','PIDATO_KOREA','TARI','PRAMUKA','SEPAKBOLA','TAEKWONDO','ELITE_STUDENT','PADUAN_SUARA','FUTSAL','LITERASI','BADMINTON','LAINNYA','NONE'];
     groupLabels = KATEGORI_LABELS;
     keyFn = row => row.kategori || 'NONE';
   } else if(groupBy === 'tanggal'){
@@ -3267,6 +3283,7 @@ function renderQuickRows(){
         <label>Kategori Kegiatan (untuk rekapan — opsional)</label>
         <select data-qfield="kategori" data-idx="${i}">
           <option value="" ${!r.kategori?'selected':''}>— Belum dipilih —</option>
+          <option value="MPLS" ${r.kategori==='MPLS'?'selected':''}>Masa Pengenalan Lingkungan Sekolah (MPLS)</option>
           <option value="BARIS_BERBARIS" ${r.kategori==='BARIS_BERBARIS'?'selected':''}>Baris Berbaris (PBB)</option>
           <option value="KEROHANIAN" ${r.kategori==='KEROHANIAN'?'selected':''}>Kerohanian</option>
           <option value="PANTONIM" ${r.kategori==='PANTONIM'?'selected':''}>Pantonim</option>
