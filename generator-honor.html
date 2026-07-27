@@ -3694,6 +3694,7 @@ async function exportDatabaseExcel(){
     return {
       kegiatan: kegiatanPhrase,
       nama: r.nama,
+      instruktur: r.jabatan || 'Instruktur',
       honor: totalKotor,
       pajak: pphAmt,
       tglIso: isoTgl,
@@ -3718,6 +3719,7 @@ async function exportDatabaseExcel(){
     {header:'No', key:'no', width:5},
     {header:'Nama Kegiatan', key:'kegiatan', width:34},
     {header:'Nama Narasumber', key:'nama', width:24},
+    {header:'Instruktur Kegiatan', key:'instruktur', width:18},
     {header:'Jumlah Honor', key:'honor', width:14},
     {header:'Jumlah Pajak', key:'pajak', width:14},
     {header:'Tgl Kegiatan', key:'tgl', width:14},
@@ -3734,6 +3736,7 @@ async function exportDatabaseExcel(){
       no: i + 1,
       kegiatan: r.kegiatan,
       nama: r.nama,
+      instruktur: r.instruktur || 'Instruktur',
       honor: r.honor,
       pajak: r.pajak,
       tgl: r.tgl,
@@ -3781,21 +3784,38 @@ async function processImportedWorkbookBuffer(arrayBuffer){
   const ws = wb.worksheets[0];
   if(!ws){ alert('File Excel tidak terbaca atau kosong.'); return; }
 
+  const headerRow = ws.getRow(1).values;
+  const colIndex = {};
+  headerRow.forEach((v, i) => {
+    const key = (v || '').toString().trim().toLowerCase();
+    if(key) colIndex[key] = i;
+  });
+  const idxKegiatan = colIndex['nama kegiatan'] || 2;
+  const idxNama = colIndex['nama narasumber'] || 3;
+  const idxInstruktur = colIndex['instruktur kegiatan'] || null;
+  const idxHonor = colIndex['jumlah honor'] || (idxInstruktur ? idxInstruktur + 1 : 4);
+  const idxPajak = colIndex['jumlah pajak'] || idxHonor + 1;
+  const idxTgl = colIndex['tgl kegiatan'] || idxPajak + 1;
+  const idxJenjang = colIndex['jenjang'] || idxTgl + 1;
+  const idxNoSurat = colIndex['no surat'] || idxJenjang + 1;
+  const idxNoSK = colIndex['no sk'] || (idxNoSurat + 2);
+
   const parsedRows = [];
   let firstKegiatan = '', firstTanggalIso = '';
 
   ws.eachRow((row, rowNumber) => {
     if(rowNumber === 1) return; // skip header
-    const vals = row.values; // 1-indexed array: [empty, No, Kegiatan, Nama, Honor, Pajak, Tgl, Jenjang, NoSurat, TglSurat, NoSK]
-    const kegiatan = (vals[2] || '').toString().trim();
-    const nama = (vals[3] || '').toString().trim();
+    const vals = row.values; // 1-indexed array, positions resolved dynamically via colIndex above
+    const kegiatan = (vals[idxKegiatan] || '').toString().trim();
+    const nama = (vals[idxNama] || '').toString().trim();
     if(!nama) return;
-    const honor = parseFloat(vals[4]) || 0;
-    const pajak = parseFloat(vals[5]) || 0;
-    const tglText = (vals[6] || '').toString().trim();
-    const jenjangText = (vals[7] || '').toString().trim();
-    const noSuratLama = (vals[8] || '').toString().trim();
-    const noSKLama = (vals[10] || '').toString().trim();
+    const jabatan = idxInstruktur ? (vals[idxInstruktur] || '').toString().trim() : '';
+    const honor = parseFloat(vals[idxHonor]) || 0;
+    const pajak = parseFloat(vals[idxPajak]) || 0;
+    const tglText = (vals[idxTgl] || '').toString().trim();
+    const jenjangText = (vals[idxJenjang] || '').toString().trim();
+    const noSuratLama = (vals[idxNoSurat] || '').toString().trim();
+    const noSKLama = (vals[idxNoSK] || '').toString().trim();
 
     let tglIso = '';
     const m = tglText.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
@@ -3810,7 +3830,7 @@ async function processImportedWorkbookBuffer(arrayBuffer){
     if(!firstTanggalIso && tglIso) firstTanggalIso = tglIso;
 
     parsedRows.push({
-      nama, org: '', jabatan: 'Instruktur',
+      nama, org: '', jabatan: jabatan || 'Instruktur',
       rate: honor, oj: 1, pph: pph,
       jenjang: jenjangTeksKeKode(jenjangText),
       tanggal: tglIso,
