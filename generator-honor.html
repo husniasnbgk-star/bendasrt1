@@ -1639,7 +1639,7 @@ function buildSKHTML(rowsSubset, nomorOverride){
   const keduaPoints = keduaEdited.length > 0 ? keduaEdited : tpl.kedua;
 
   const namaListHTML = active.length > 0
-    ? active.map(r => `<li>Nama: <strong>${r.nama}</strong>${r.jabatan ? ' — ' + r.jabatan : ''}</li>`).join('')
+    ? active.map(r => `<li>Nama: <strong>${r.nama}</strong> — ${(r.jabatan || 'Instruktur')} ${kegiatanPhrase}</li>`).join('')
     : `<li><em>Belum ada narasumber yang diinput.</em></li>`;
 
   return `
