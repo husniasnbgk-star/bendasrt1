@@ -657,6 +657,8 @@ Siti Aminah, SD</pre>
       </div>
       <div class="quick-actions" style="justify-content:flex-start;margin-top:0;">
         <button class="btn-ghost" id="btnResetSKNarasi" type="button">Reset ke Narasi Bawaan</button>
+        <button class="btn-gold" id="btnSaveSKNarasi" type="button">💾 Simpan Perubahan Narasi</button>
+        <button class="btn-outline" id="btnSaveAsNewSK" type="button">💾 Simpan sebagai SK Baru...</button>
       </div>
     </div>
     <div class="small-note" style="margin-bottom:14px;">Isi data sekali di panel kiri — tombol <strong>Cetak Semua</strong> dan <strong>Ekspor PDF Gabungan</strong> otomatis membuat 2 halaman: semua narasumber dalam satu tabel Tanda Terima Honor, lalu semua narasumber dalam satu tabel Daftar Hadir. Centang opsi "1 narasumber = 1 halaman" di panel Daftar Narasumber kalau mau tiap orang punya halaman terpisah.</div>
@@ -2285,6 +2287,37 @@ function syncSKNarasiFromTemplate(){
   el('skKeduaEdit').value = (tpl.kedua || []).join('\n');
 }
 
+async function getSKNarrativeStore(){
+  try{
+    const res = await window.storage.get('sk-narrative-store', false);
+    return res && res.value ? JSON.parse(res.value) : {};
+  }catch(e){ return {}; }
+}
+async function saveSKNarrativeStore(store){
+  try{ await window.storage.set('sk-narrative-store', JSON.stringify(store), false); }catch(e){}
+}
+function addSKDropdownOption(key, label){
+  const sel = el('skJenisKegiatan');
+  if([...sel.options].some(o => o.value === key)) return;
+  const opt = document.createElement('option');
+  opt.value = key; opt.textContent = label;
+  const lainnya = [...sel.options].find(o => o.value === 'LAINNYA');
+  if(lainnya) sel.insertBefore(opt, lainnya); else sel.appendChild(opt);
+}
+async function loadSKNarrativeStore(){
+  const store = await getSKNarrativeStore();
+  Object.keys(store).forEach(k => {
+    const entry = store[k];
+    if(SK_TEMPLATES[k]){
+      SK_TEMPLATES[k].menimbang = entry.menimbang;
+      SK_TEMPLATES[k].kedua = entry.kedua;
+    } else {
+      SK_TEMPLATES[k] = {label: entry.label || k, menimbang: entry.menimbang, kedua: entry.kedua};
+      addSKDropdownOption(k, entry.label || k);
+    }
+  });
+}
+
 el('skJenisKegiatan').addEventListener('change', () => {
   syncSKNarasiFromTemplate();
   renderPreview();
@@ -2294,6 +2327,43 @@ el('skKeduaEdit').addEventListener('input', renderPreview);
 el('btnResetSKNarasi').addEventListener('click', () => {
   syncSKNarasiFromTemplate();
   renderPreview();
+});
+el('btnSaveSKNarasi').addEventListener('click', async () => {
+  const skKey = el('skJenisKegiatan').value;
+  const menimbang = el('skMenimbangEdit').value.trim();
+  const kedua = el('skKeduaEdit').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if(!menimbang || kedua.length === 0){
+    alert('Menimbang dan Tugas Diktum KEDUA tidak boleh kosong.');
+    return;
+  }
+  const store = await getSKNarrativeStore();
+  store[skKey] = {label: (SK_TEMPLATES[skKey] && SK_TEMPLATES[skKey].label) || skKey, menimbang, kedua};
+  await saveSKNarrativeStore(store);
+  if(SK_TEMPLATES[skKey]){
+    SK_TEMPLATES[skKey].menimbang = menimbang;
+    SK_TEMPLATES[skKey].kedua = kedua;
+  }
+  alert('Perubahan narasi untuk kategori ini berhasil disimpan. Sekarang setiap kali kategori ini dipilih, narasi ini yang otomatis muncul.');
+});
+el('btnSaveAsNewSK').addEventListener('click', async () => {
+  const name = prompt('Nama SK baru (misal: Lomba Cerdas Cermat):');
+  if(!name || !name.trim()) return;
+  const label = name.trim();
+  const key = 'CUSTOM_' + label.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const menimbang = el('skMenimbangEdit').value.trim();
+  const kedua = el('skKeduaEdit').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if(!menimbang || kedua.length === 0){
+    alert('Menimbang dan Tugas Diktum KEDUA tidak boleh kosong.');
+    return;
+  }
+  SK_TEMPLATES[key] = {label, menimbang, kedua};
+  addSKDropdownOption(key, label);
+  const store = await getSKNarrativeStore();
+  store[key] = {label, menimbang, kedua};
+  await saveSKNarrativeStore(store);
+  el('skJenisKegiatan').value = key;
+  renderPreview();
+  alert(`SK baru "${label}" berhasil disimpan dan langsung dipilih di dropdown.`);
 });
 el('skPerPerson').addEventListener('change', e => {
   skPerPersonMode = e.target.checked;
@@ -4126,7 +4196,7 @@ generateNamedPageRules();
 loadSKCounter().then(() => { if(docMode === 'sk') renderPreview(); });
 loadSPBCounter().then(() => { if(docMode === 'spb') renderPreview(); });
 loadDocSettings().then(() => { renderPreview(); });
-syncSKNarasiFromTemplate();
+loadSKNarrativeStore().then(() => { syncSKNarasiFromTemplate(); if(docMode === 'sk') renderPreview(); });
 waitForGoogleAndInit();
 </script>
 </body>
