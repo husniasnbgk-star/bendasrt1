@@ -3695,6 +3695,7 @@ async function exportDatabaseExcel(){
       kegiatan: kegiatanPhrase,
       nama: r.nama,
       instruktur: r.jabatan || 'Instruktur',
+      kategori: KATEGORI_LABELS[r.kategori] || '',
       honor: totalKotor,
       pajak: pphAmt,
       tglIso: isoTgl,
@@ -3720,6 +3721,7 @@ async function exportDatabaseExcel(){
     {header:'Nama Kegiatan', key:'kegiatan', width:34},
     {header:'Nama Narasumber', key:'nama', width:24},
     {header:'Instruktur Kegiatan', key:'instruktur', width:18},
+    {header:'Kategori / Momen Acara', key:'kategori', width:26},
     {header:'Jumlah Honor', key:'honor', width:14},
     {header:'Jumlah Pajak', key:'pajak', width:14},
     {header:'Tgl Kegiatan', key:'tgl', width:14},
@@ -3737,6 +3739,7 @@ async function exportDatabaseExcel(){
       kegiatan: r.kegiatan,
       nama: r.nama,
       instruktur: r.instruktur || 'Instruktur',
+      kategori: r.kategori || '',
       honor: r.honor,
       pajak: r.pajak,
       tgl: r.tgl,
@@ -3793,12 +3796,20 @@ async function processImportedWorkbookBuffer(arrayBuffer){
   const idxKegiatan = colIndex['nama kegiatan'] || 2;
   const idxNama = colIndex['nama narasumber'] || 3;
   const idxInstruktur = colIndex['instruktur kegiatan'] || null;
-  const idxHonor = colIndex['jumlah honor'] || (idxInstruktur ? idxInstruktur + 1 : 4);
+  const idxKategori = colIndex['kategori / momen acara'] || colIndex['kategori'] || null;
+  const idxHonor = colIndex['jumlah honor'] || (idxKategori || idxInstruktur ? Math.max(idxKategori||0, idxInstruktur||0) + 1 : 4);
   const idxPajak = colIndex['jumlah pajak'] || idxHonor + 1;
   const idxTgl = colIndex['tgl kegiatan'] || idxPajak + 1;
   const idxJenjang = colIndex['jenjang'] || idxTgl + 1;
   const idxNoSurat = colIndex['no surat'] || idxJenjang + 1;
   const idxNoSK = colIndex['no sk'] || (idxNoSurat + 2);
+
+  function kategoriLabelKeKode(label){
+    if(!label) return '';
+    const target = label.trim().toLowerCase();
+    const found = Object.keys(KATEGORI_LABELS).find(k => KATEGORI_LABELS[k].toLowerCase() === target);
+    return found && found !== 'NONE' ? found : '';
+  }
 
   const parsedRows = [];
   let firstKegiatan = '', firstTanggalIso = '';
@@ -3810,6 +3821,7 @@ async function processImportedWorkbookBuffer(arrayBuffer){
     const nama = (vals[idxNama] || '').toString().trim();
     if(!nama) return;
     const jabatan = idxInstruktur ? (vals[idxInstruktur] || '').toString().trim() : '';
+    const kategoriText = idxKategori ? (vals[idxKategori] || '').toString().trim() : '';
     const honor = parseFloat(vals[idxHonor]) || 0;
     const pajak = parseFloat(vals[idxPajak]) || 0;
     const tglText = (vals[idxTgl] || '').toString().trim();
@@ -3833,6 +3845,7 @@ async function processImportedWorkbookBuffer(arrayBuffer){
       nama, org: '', jabatan: jabatan || 'Instruktur',
       rate: honor, oj: 1, pph: pph,
       jenjang: jenjangTeksKeKode(jenjangText),
+      kategori: kategoriLabelKeKode(kategoriText),
       tanggal: tglIso,
       kegiatan: kegiatan && kegiatan !== firstKegiatan ? kegiatan : '',
       noSuratLama: noSuratLama || null,
@@ -3858,7 +3871,7 @@ async function processImportedWorkbookBuffer(arrayBuffer){
   const numberNote = useOldNumbers
     ? ' Nomor Surat & SK lama akan dipakai ulang sesuai yang tercatat di file (opsi sedang aktif).'
     : ' Nomor Surat & SK akan dibuat baru mengikuti pengaturan saat ini (centang "Gunakan nomor lama" kalau mau pakai nomor asli dari file).';
-  alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang.`);
+  alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang. Khusus tab Rekap Data, kamu bisa pilih momen acara tertentu (mis. MPLS) lewat "Filter Kategori Kegiatan", atau kelompokkan otomatis per minggu/bulan lewat "Kelompokkan Berdasarkan".`);
 }
 
 el('btnImportFromDrive').addEventListener('click', async () => {
