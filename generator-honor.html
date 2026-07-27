@@ -573,26 +573,31 @@ Siti Aminah, SD</pre>
           <option value="SBB">SMA (SRMA)</option>
         </select>
       </div>
-      <div class="field"><label>Filter Kategori Kegiatan</label>
-        <select id="rekapKategoriFilter">
-          <option value="ALL">Semua Kategori</option>
-          <option value="MPLS">Masa Pengenalan Lingkungan Sekolah (MPLS)</option>
-          <option value="BARIS_BERBARIS">Baris Berbaris (PBB)</option>
-          <option value="KEROHANIAN">Kerohanian</option>
-          <option value="PANTONIM">Pantonim</option>
-          <option value="PIDATO_KOREA">Pidato Bahasa Korea</option>
-          <option value="TARI">Tari</option>
-          <option value="PRAMUKA">Pramuka</option>
-          <option value="SEPAKBOLA">Sepakbola</option>
-          <option value="TAEKWONDO">Taekwondo</option>
-          <option value="ELITE_STUDENT">Elite Student</option>
-          <option value="PADUAN_SUARA">Paduan Suara</option>
-          <option value="FUTSAL">Futsal</option>
-          <option value="LITERASI">Literasi</option>
-          <option value="BADMINTON">Badminton</option>
-          <option value="LAINNYA">Lainnya</option>
-          <option value="NONE">Belum Berkategori</option>
-        </select>
+      <div class="field" style="min-width:280px;position:relative;">
+        <label>Filter Kategori Kegiatan (bisa pilih lebih dari satu)</label>
+        <button class="btn-outline" id="btnToggleKategoriMulti" type="button" style="width:100%;text-align:left;">Semua Kategori ▾</button>
+        <div id="kategoriMultiPanel" style="display:none;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:6px;background:#fff;max-height:240px;overflow-y:auto;position:absolute;z-index:20;min-width:280px;box-shadow:0 8px 20px rgba(11,29,54,.15);">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="btn-ghost" id="btnKategoriPilihSemua" type="button" style="font-size:12px;padding:4px 10px;">Pilih Semua</button>
+            <button class="btn-ghost" id="btnKategoriKosongkan" type="button" style="font-size:12px;padding:4px 10px;">Kosongkan</button>
+          </div>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="MPLS"> Masa Pengenalan Lingkungan Sekolah (MPLS)</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="BARIS_BERBARIS"> Baris Berbaris (PBB)</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="KEROHANIAN"> Kerohanian</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="PANTONIM"> Pantonim</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="PIDATO_KOREA"> Pidato Bahasa Korea</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="TARI"> Tari</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="PRAMUKA"> Pramuka</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="SEPAKBOLA"> Sepakbola</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="TAEKWONDO"> Taekwondo</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="ELITE_STUDENT"> Elite Student</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="PADUAN_SUARA"> Paduan Suara</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="FUTSAL"> Futsal</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="LITERASI"> Literasi</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="BADMINTON"> Badminton</label>
+          <label class="jchk" style="display:block;margin-bottom:5px;"><input type="checkbox" class="kategoriMultiChk" value="LAINNYA"> Lainnya</label>
+          <label class="jchk" style="display:block;margin-bottom:0;"><input type="checkbox" class="kategoriMultiChk" value="NONE"> Belum Berkategori</label>
+        </div>
       </div>
       <div class="field"><label>Filter Tanggal Kegiatan</label>
         <select id="rekapTanggalFilter">
@@ -1547,6 +1552,7 @@ const SK_TEMPLATES = {
 let skNomorUrut = 1;
 let skPerPersonMode = false;
 let useOldNumbers = false;
+let selectedKategoriSet = new Set();
 
 async function loadSKCounter(){
   try{
@@ -2087,15 +2093,14 @@ function getYearLabel(key){
 function buildRekapHTML(){
   const h = gatherHeader();
   const jenjangFilter = el('rekapJenjangFilter') ? el('rekapJenjangFilter').value : 'ALL';
-  const kategoriFilter = el('rekapKategoriFilter') ? el('rekapKategoriFilter').value : 'ALL';
   const tanggalFilter = el('rekapTanggalFilter') ? el('rekapTanggalFilter').value : 'ALL';
   const groupBy = el('rekapGroupBy') ? el('rekapGroupBy').value : 'jenjang';
 
   const filteredRows = rows.filter(r => {
     if(jenjangFilter !== 'ALL' && (r.jenjang || 'ALL') !== jenjangFilter) return false;
-    if(kategoriFilter !== 'ALL'){
+    if(selectedKategoriSet.size > 0){
       const rk = r.kategori || 'NONE';
-      if(rk !== kategoriFilter) return false;
+      if(!selectedKategoriSet.has(rk)) return false;
     }
     if(tanggalFilter !== 'ALL' && (r.tanggal || '') !== tanggalFilter) return false;
     return true;
@@ -2272,7 +2277,55 @@ el('rekapJenjangFilter').addEventListener('change', e => {
   }
   renderPreview();
 });
-el('rekapKategoriFilter').addEventListener('change', renderPreview);
+function updateKategoriMultiButtonLabel(){
+  const btn = el('btnToggleKategoriMulti');
+  if(selectedKategoriSet.size === 0){
+    btn.textContent = 'Semua Kategori ▾';
+  } else if(selectedKategoriSet.size === 1){
+    const code = [...selectedKategoriSet][0];
+    btn.textContent = (KATEGORI_LABELS[code] || code) + ' ▾';
+  } else {
+    btn.textContent = selectedKategoriSet.size + ' Kategori Dipilih ▾';
+  }
+}
+
+el('btnToggleKategoriMulti').addEventListener('click', () => {
+  const panel = el('kategoriMultiPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+document.addEventListener('click', e => {
+  const panel = el('kategoriMultiPanel');
+  const btn = el('btnToggleKategoriMulti');
+  if(panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== btn){
+    panel.style.display = 'none';
+  }
+});
+
+document.querySelectorAll('.kategoriMultiChk').forEach(chk => {
+  chk.addEventListener('change', e => {
+    if(e.target.checked) selectedKategoriSet.add(e.target.value);
+    else selectedKategoriSet.delete(e.target.value);
+    updateKategoriMultiButtonLabel();
+    renderPreview();
+  });
+});
+
+el('btnKategoriPilihSemua').addEventListener('click', () => {
+  document.querySelectorAll('.kategoriMultiChk').forEach(chk => {
+    chk.checked = true;
+    selectedKategoriSet.add(chk.value);
+  });
+  updateKategoriMultiButtonLabel();
+  renderPreview();
+});
+
+el('btnKategoriKosongkan').addEventListener('click', () => {
+  document.querySelectorAll('.kategoriMultiChk').forEach(chk => { chk.checked = false; });
+  selectedKategoriSet.clear();
+  updateKategoriMultiButtonLabel();
+  renderPreview();
+});
 el('rekapTanggalFilter').addEventListener('change', renderPreview);
 el('rekapGroupBy').addEventListener('change', renderPreview);
 el('rekapJudulKegiatan').addEventListener('input', renderPreview);
@@ -2646,14 +2699,13 @@ async function exportExcelHadir(){
 async function exportExcelRekap(){
   const h = gatherHeader();
   const jenjangFilter = el('rekapJenjangFilter') ? el('rekapJenjangFilter').value : 'ALL';
-  const kategoriFilter = el('rekapKategoriFilter') ? el('rekapKategoriFilter').value : 'ALL';
   const tanggalFilter = el('rekapTanggalFilter') ? el('rekapTanggalFilter').value : 'ALL';
   const groupBy = el('rekapGroupBy') ? el('rekapGroupBy').value : 'jenjang';
   const jenjangLabels = {SBC:'SD (SRD)', SBE:'SMP (SRMP)', SBB:'SMA (SRMA)', NONE:'Tanpa Jenjang'};
 
   const filteredRows = rows.filter(r => {
     if(jenjangFilter !== 'ALL' && (r.jenjang || 'ALL') !== jenjangFilter) return false;
-    if(kategoriFilter !== 'ALL' && (r.kategori || 'NONE') !== kategoriFilter) return false;
+    if(selectedKategoriSet.size > 0 && !selectedKategoriSet.has(r.kategori || 'NONE')) return false;
     if(tanggalFilter !== 'ALL' && (r.tanggal || '') !== tanggalFilter) return false;
     return true;
   });
@@ -3052,7 +3104,7 @@ el('btnPdfRekapSemuaKategori').addEventListener('click', async () => {
     .filter(k => kategoriFound.includes(k));
 
   const prevJenjangFilter = el('rekapJenjangFilter').value;
-  const prevKategoriFilter = el('rekapKategoriFilter').value;
+  const prevKategoriSet = new Set(selectedKategoriSet);
   const prevTanggalFilter = el('rekapTanggalFilter').value;
   const prevGroupBy = el('rekapGroupBy').value;
   const prevDocMode = docMode;
@@ -3103,7 +3155,7 @@ el('btnPdfRekapSemuaKategori').addEventListener('click', async () => {
     el('rekapGroupBy').value = 'jenjang';
 
     for(let i = 0; i < orderedKategori.length; i++){
-      el('rekapKategoriFilter').value = orderedKategori[i];
+      selectedKategoriSet = new Set([orderedKategori[i]]);
       await addCanvasPageSplit(buildRekapHTML(), i === 0);
     }
 
@@ -3115,7 +3167,9 @@ el('btnPdfRekapSemuaKategori').addEventListener('click', async () => {
   } finally {
     docMode = prevDocMode;
     el('rekapJenjangFilter').value = prevJenjangFilter;
-    el('rekapKategoriFilter').value = prevKategoriFilter;
+    selectedKategoriSet = prevKategoriSet;
+    updateKategoriMultiButtonLabel();
+    document.querySelectorAll('.kategoriMultiChk').forEach(chk => { chk.checked = selectedKategoriSet.has(chk.value); });
     el('rekapTanggalFilter').value = prevTanggalFilter;
     el('rekapGroupBy').value = prevGroupBy;
     renderPreview();
