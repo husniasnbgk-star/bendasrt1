@@ -647,6 +647,17 @@ Siti Aminah, SD</pre>
         </div>
       </div>
       <div class="small-note" style="margin:0;align-self:center;">Narasi Menimbang & tugas di diktum KEDUA otomatis menyesuaikan pilihan ini. Pilih "SK Lainnya" untuk narasi umum mengikuti Nama Kegiatan bebas. Kalau "1 Instruktur = 1 SK" dicentang, tiap narasumber dapat SK sendiri dengan nomor berurutan (001, 002, dst) seperti Surat Undangan — kalau tidak dicentang, satu SK berisi semua nama.</div>
+      <div class="field" style="min-width:100%;margin-top:10px;">
+        <label>Menimbang (bisa diedit manual — otomatis terisi ulang kalau Jenis Kegiatan diganti)</label>
+        <textarea id="skMenimbangEdit" rows="2" style="min-height:56px;"></textarea>
+      </div>
+      <div class="field" style="min-width:100%;">
+        <label>Tugas Diktum KEDUA (bisa diedit manual — satu tugas per baris, otomatis terisi ulang kalau Jenis Kegiatan diganti)</label>
+        <textarea id="skKeduaEdit" rows="6" style="min-height:130px;"></textarea>
+      </div>
+      <div class="quick-actions" style="justify-content:flex-start;margin-top:0;">
+        <button class="btn-ghost" id="btnResetSKNarasi" type="button">Reset ke Narasi Bawaan</button>
+      </div>
     </div>
     <div class="small-note" style="margin-bottom:14px;">Isi data sekali di panel kiri — tombol <strong>Cetak Semua</strong> dan <strong>Ekspor PDF Gabungan</strong> otomatis membuat 2 halaman: semua narasumber dalam satu tabel Tanda Terima Honor, lalu semua narasumber dalam satu tabel Daftar Hadir. Centang opsi "1 narasumber = 1 halaman" di panel Daftar Narasumber kalau mau tiap orang punya halaman terpisah.</div>
     <div class="paper" id="paper"></div>
@@ -1620,8 +1631,10 @@ function buildSKHTML(rowsSubset, nomorOverride){
   const skKey = el('skJenisKegiatan') ? el('skJenisKegiatan').value : 'LAINNYA';
   const tpl = SK_TEMPLATES[skKey] || SK_TEMPLATES.LAINNYA;
   const kegiatanPhrase = tpl.label || kegiatanPhraseFree;
-  const menimbangInti = tpl.menimbang || `melaksanakan kegiatan ${kegiatanPhraseFree}`;
-  const keduaPoints = tpl.kedua;
+  const menimbangEdited = el('skMenimbangEdit') ? el('skMenimbangEdit').value.trim() : '';
+  const menimbangInti = menimbangEdited || tpl.menimbang || `melaksanakan kegiatan ${kegiatanPhraseFree}`;
+  const keduaEdited = el('skKeduaEdit') ? el('skKeduaEdit').value.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const keduaPoints = keduaEdited.length > 0 ? keduaEdited : tpl.kedua;
 
   const namaListHTML = active.length > 0
     ? active.map(r => `<li>Nama: <strong>${r.nama}</strong>${r.jabatan ? ' — ' + r.jabatan : ''}</li>`).join('')
@@ -2265,7 +2278,23 @@ el('docTabs').addEventListener('click', e => {
   renderPreview();
 });
 
-el('skJenisKegiatan').addEventListener('change', renderPreview);
+function syncSKNarasiFromTemplate(){
+  const skKey = el('skJenisKegiatan').value;
+  const tpl = SK_TEMPLATES[skKey] || SK_TEMPLATES.LAINNYA;
+  el('skMenimbangEdit').value = tpl.menimbang || '';
+  el('skKeduaEdit').value = (tpl.kedua || []).join('\n');
+}
+
+el('skJenisKegiatan').addEventListener('change', () => {
+  syncSKNarasiFromTemplate();
+  renderPreview();
+});
+el('skMenimbangEdit').addEventListener('input', renderPreview);
+el('skKeduaEdit').addEventListener('input', renderPreview);
+el('btnResetSKNarasi').addEventListener('click', () => {
+  syncSKNarasiFromTemplate();
+  renderPreview();
+});
 el('skPerPerson').addEventListener('change', e => {
   skPerPersonMode = e.target.checked;
   renderPreview();
@@ -4097,6 +4126,7 @@ generateNamedPageRules();
 loadSKCounter().then(() => { if(docMode === 'sk') renderPreview(); });
 loadSPBCounter().then(() => { if(docMode === 'spb') renderPreview(); });
 loadDocSettings().then(() => { renderPreview(); });
+syncSKNarasiFromTemplate();
 waitForGoogleAndInit();
 </script>
 </body>
