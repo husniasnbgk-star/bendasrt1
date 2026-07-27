@@ -462,6 +462,7 @@ Siti Aminah, SD</pre>
     <button class="btn-gold" id="btnPdfMaster">Ekspor PDF Semua Dokumen</button>
     <button class="btn-ghost" id="btnPrintRekapSpb">Cetak Rekap &amp; SPB</button>
     <button class="btn-gold" id="btnPdfRekapSpb">Ekspor PDF Rekap &amp; SPB</button>
+    <button class="btn-gold" id="btnPdfRekapSemuaKategori">📋 Ekspor PDF Rekap — Semua Momen/Kategori</button>
   </div>
 </div>
 
@@ -3031,6 +3032,96 @@ el('btnPrintRekapSpb').addEventListener('click', async () => {
     renderPreview();
   }, 400);
   await addToRiwayat('Cetak Rekap & SPB');
+});
+
+el('btnPdfRekapSemuaKategori').addEventListener('click', async () => {
+  const btn = el('btnPdfRekapSemuaKategori');
+  const original = btn.textContent;
+  btn.textContent = 'Membuat PDF...';
+  btn.disabled = true;
+  const paper = el('paper');
+
+  const kategoriFound = [...new Set(rows.map(r => r.kategori || 'NONE'))];
+  if(kategoriFound.length === 0){
+    alert('Belum ada narasumber yang diinput.');
+    btn.textContent = original;
+    btn.disabled = false;
+    return;
+  }
+  const orderedKategori = ['MPLS','BARIS_BERBARIS','KEROHANIAN','PANTONIM','PIDATO_KOREA','TARI','PRAMUKA','SEPAKBOLA','TAEKWONDO','ELITE_STUDENT','PADUAN_SUARA','FUTSAL','LITERASI','BADMINTON','LAINNYA','NONE']
+    .filter(k => kategoriFound.includes(k));
+
+  const prevJenjangFilter = el('rekapJenjangFilter').value;
+  const prevKategoriFilter = el('rekapKategoriFilter').value;
+  const prevTanggalFilter = el('rekapTanggalFilter').value;
+  const prevGroupBy = el('rekapGroupBy').value;
+  const prevDocMode = docMode;
+
+  try{
+    const { jsPDF } = window.jspdf;
+    const ds = docSettings.rekap || DOC_SETTINGS_DEFAULT.rekap;
+    const isPortraitDoc = ds.orient === 'portrait';
+    const pdf = new jsPDF({orientation: isPortraitDoc ? 'portrait' : 'landscape', unit: 'mm', format: 'a4'});
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const marginTop = ds.marginTop * 10;
+    const marginBottom = ds.marginBottom * 10;
+    const marginLeftMM = ds.marginLeft * 10;
+    const marginRightMM = ds.marginRight * 10;
+    const availW = pageW - marginLeftMM - marginRightMM;
+    const availH = pageH - marginTop - marginBottom;
+
+    async function addCanvasPageSplit(html, isFirst){
+      paper.innerHTML = html;
+      paper.classList.toggle('no-frame', isPortraitDoc);
+      fitNamaCells(paper);
+      const canvas = await html2canvas(paper, {scale: 2, backgroundColor: '#ffffff'});
+      const pxPerMM = canvas.width / availW;
+      const pageHeightPx = Math.floor(availH * pxPerMM);
+      const totalPages = Math.max(1, Math.ceil(canvas.height / pageHeightPx));
+      for(let p = 0; p < totalPages; p++){
+        const sliceY = p * pageHeightPx;
+        const sliceH = Math.min(pageHeightPx, canvas.height - sliceY);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceH;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const imgData = sliceCanvas.toDataURL('image/png');
+        const renderW = availW, renderH = sliceH / pxPerMM;
+        const x = marginLeftMM, y = marginTop;
+        if(!(isFirst && p === 0)) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', x, y, renderW, renderH);
+      }
+    }
+
+    docMode = 'rekap';
+    el('rekapJenjangFilter').value = 'ALL';
+    el('rekapTanggalFilter').value = 'ALL';
+    el('rekapGroupBy').value = 'jenjang';
+
+    for(let i = 0; i < orderedKategori.length; i++){
+      el('rekapKategoriFilter').value = orderedKategori[i];
+      await addCanvasPageSplit(buildRekapHTML(), i === 0);
+    }
+
+    pdf.save('Rekap_Semua_Momen_Kegiatan.pdf');
+    await addToRiwayat('Ekspor PDF Rekap Semua Kategori');
+  } catch(err) {
+    console.error(err);
+    alert('Gagal membuat PDF: ' + err.message);
+  } finally {
+    docMode = prevDocMode;
+    el('rekapJenjangFilter').value = prevJenjangFilter;
+    el('rekapKategoriFilter').value = prevKategoriFilter;
+    el('rekapTanggalFilter').value = prevTanggalFilter;
+    el('rekapGroupBy').value = prevGroupBy;
+    renderPreview();
+    btn.textContent = original;
+    btn.disabled = false;
+  }
 });
 
 el('btnPdfRekapSpb').addEventListener('click', async () => {
