@@ -3229,23 +3229,21 @@ el('btnExportAll').addEventListener('click', async () => {
   const originalMode = docMode;
   try {
     const active = getActiveRows();
-    const h = gatherHeader();
-    const pages = [];
-    pages.push({html: buildTTHHTML(active), type:'tth'});
-    pages.push({html: buildHadirHTML(active), type:'hadir'});
-    active.forEach((r,i) => pages.push({html: buildSuratHTML(r, i), type:'surat'}));
-    if(skPerPersonMode && active.length > 0){
-      active.forEach((r,i) => pages.push({html: buildSKHTML([r], resolveSKNomorForIndex(r, i, h)), type:'sk'}));
-    } else {
-      pages.push({html: buildSKHTML(), type:'sk'});
-    }
-
-    if(pages.length === 0){
+    if(active.length === 0){
       alert('Belum ada narasumber yang diinput.');
       btn.textContent = original;
       btn.disabled = false;
       return;
     }
+    const h = gatherHeader();
+    const pages = [];
+    active.forEach((r, i) => {
+      pages.push({html: buildTTHHTML([r], 1), type:'tth'});
+      pages.push({html: buildHadirHTML([r], 1), type:'hadir'});
+      pages.push({html: buildSuratHTML(r, i), type:'surat'});
+      pages.push({html: buildSKHTML([r], resolveSKNomorForIndex(r, i, h)), type:'sk'});
+    });
+
     const { jsPDF } = window.jspdf;
     const paper = el('paper');
     let pdf = null;
@@ -3262,9 +3260,14 @@ el('btnExportAll').addEventListener('click', async () => {
       paper.innerHTML = p.html;
       paper.classList.add('no-frame');
       fitNamaCells(paper);
-      const canvas = await html2canvas(paper, {scale: 2, backgroundColor: '#ffffff'});
-      const imgData = canvas.toDataURL('image/png');
-      const imgRatio = canvas.height / canvas.width;
+      let canvas, imgData, imgRatio;
+      try{
+        canvas = await html2canvas(paper, {scale: 2, backgroundColor: '#ffffff'});
+        imgData = canvas.toDataURL('image/jpeg', 0.92);
+        imgRatio = canvas.height / canvas.width;
+      }catch(pageErr){
+        throw new Error(`Gagal merender halaman ke-${i+1} (jenis: ${p.type}): ${pageErr.message || pageErr}`);
+      }
 
       if(i === 0){
         pdf = new jsPDF({orientation: isPortrait ? 'portrait' : 'landscape', unit: 'mm', format: 'a4'});
@@ -3278,7 +3281,9 @@ el('btnExportAll').addEventListener('click', async () => {
       let renderW = availW, renderH = renderW * imgRatio;
       if(renderH > availH){ renderH = availH; renderW = renderH / imgRatio; }
       const x = marginLeftMM + (availW - renderW) / 2, y = marginTop;
-      pdf.addImage(imgData, 'PNG', x, y, renderW, renderH);
+      pdf.addImage(imgData, 'JPEG', x, y, renderW, renderH);
+      canvas.width = 0;
+      canvas.height = 0;
     }
 
     const baseName = (h.judul2 || 'Dokumen_Kegiatan').replace(/[^a-z0-9]+/gi, '_').substring(0, 40);
@@ -3286,7 +3291,7 @@ el('btnExportAll').addEventListener('click', async () => {
     await addToRiwayat('Export ALL');
   } catch(err){
     console.error(err);
-    alert('Gagal membuat PDF Export ALL.');
+    alert('Gagal membuat PDF Export ALL.\n\nDetail error: ' + (err && err.message ? err.message : err));
   } finally {
     docMode = originalMode;
     renderPreview();
