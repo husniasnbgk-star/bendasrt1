@@ -1815,7 +1815,7 @@ function buildSPBHTML(group, nomorUrutValue){
   const kota = (h.ttdLokasi || '').split(',')[0].trim() || h.lokasiKegiatan || 'Bireuen';
 
   let total = 0;
-  group.rows.forEach(r => { const c = computeRow(r); total += c.bersih; });
+  group.rows.forEach(r => { const c = computeRow(r); total += c.totalKotor; });
   const namaFirst = group.rows[0] ? group.rows[0].nama : '-';
   const namaDisplay = group.rows.length > 1 ? `${namaFirst} dll` : namaFirst;
   const kegiatanPhrase = toActivityPhrase(h.judul2) || h.judul2 || '(nama kegiatan)';
@@ -1892,7 +1892,7 @@ function buildKuitansiHTML(group, nomorUrutValue){
   const kota = (h.ttdLokasi || '').split(',')[0].trim() || h.lokasiKegiatan || 'Bireuen';
 
   let total = 0;
-  group.rows.forEach(r => { const c = computeRow(r); total += c.bersih; });
+  group.rows.forEach(r => { const c = computeRow(r); total += c.totalKotor; });
   const namaFirst = group.rows[0] ? group.rows[0].nama : '-';
   const namaDisplay = group.rows.length > 1 ? `${namaFirst} dll` : namaFirst;
   const kegiatanPhrase = toActivityPhrase(h.judul2) || h.judul2 || '(nama kegiatan)';
