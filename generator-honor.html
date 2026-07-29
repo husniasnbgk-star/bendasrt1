@@ -4085,16 +4085,33 @@ async function processImportedWorkbookBuffer(arrayBuffer){
     const kategoriText = idxKategori ? (vals[idxKategori] || '').toString().trim() : '';
     const honor = parseFloat(vals[idxHonor]) || 0;
     const pajak = parseFloat(vals[idxPajak]) || 0;
-    const tglText = (vals[idxTgl] || '').toString().trim();
+    const tglRaw = vals[idxTgl];
     const jenjangText = (vals[idxJenjang] || '').toString().trim();
     const noSuratLama = (vals[idxNoSurat] || '').toString().trim();
     const noSKLama = (vals[idxNoSK] || '').toString().trim();
 
     let tglIso = '';
-    const m = tglText.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
-    if(m){
-      const bulanIdx = BULAN_INDO.findIndex(b => b.toLowerCase() === m[2].toLowerCase());
-      if(bulanIdx >= 0) tglIso = `${m[3]}-${String(bulanIdx+1).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+    if(tglRaw instanceof Date && !isNaN(tglRaw.getTime())){
+      // ExcelJS returned a native Date cell (e.g. after the file was edited/resaved in Sheets/Excel)
+      const y = tglRaw.getFullYear();
+      const mo = tglRaw.getMonth() + 1;
+      const d = tglRaw.getDate();
+      tglIso = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    } else {
+      const tglText = (tglRaw || '').toString().trim();
+      let m = tglText.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/); // "17 Juni 2026"
+      if(m){
+        const bulanIdx = BULAN_INDO.findIndex(b => b.toLowerCase() === m[2].toLowerCase());
+        if(bulanIdx >= 0) tglIso = `${m[3]}-${String(bulanIdx+1).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+      }
+      if(!tglIso){
+        m = tglText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); // "2026-06-17"
+        if(m) tglIso = `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+      }
+      if(!tglIso){
+        m = tglText.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); // "17/06/2026" or "17-06-2026"
+        if(m) tglIso = `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+      }
     }
 
     const pph = honor > 0 ? Math.round((pajak / honor) * 1000) / 10 : 5;
