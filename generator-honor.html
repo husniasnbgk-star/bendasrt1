@@ -2255,6 +2255,7 @@ function buildRekapHTML(){
   const rekapTglPengesahanManual = el('rekapTglPengesahanManual') ? el('rekapTglPengesahanManual').value : '';
   const kotaTtdRekap = (h.ttdLokasi || '').split(',')[0].trim() || 'Bireuen';
   const ttdLokasiRekap = rekapTglPengesahanManual ? `${kotaTtdRekap}, ${formatTanggalID(rekapTglPengesahanManual)}` : h.ttdLokasi;
+  const judul3TanpaTanggal = (h.judul3 || '').split(',')[0].trim();
 
   return `
   <div class="doc-rekap">
@@ -2275,7 +2276,7 @@ function buildRekapHTML(){
         </table>
       </td>
     </tr>
-    <tr><td class="title-block" colspan="7">NOMINATIF HONOR INSTRUKTUR<br>${rekapJudulLine}<br>${h.judul3}</td></tr>
+    <tr><td class="title-block" colspan="7">NOMINATIF HONOR INSTRUKTUR<br>${rekapJudulLine}<br>${judul3TanpaTanggal}</td></tr>
     <tr>
       <th class="th-cell">NO</th>
       <th class="th-cell">INSTRUKTUR</th>
@@ -2908,8 +2909,9 @@ async function exportExcelRekap(){
   const rekapTglPengesahanManual2 = el('rekapTglPengesahanManual') ? el('rekapTglPengesahanManual').value : '';
   const kotaTtdRekap2 = (h.ttdLokasi || '').split(',')[0].trim() || 'Bireuen';
   const ttdLokasiRekap2 = rekapTglPengesahanManual2 ? `${kotaTtdRekap2}, ${formatTanggalID(rekapTglPengesahanManual2)}` : h.ttdLokasi;
+  const judul3TanpaTanggal2 = (h.judul3 || '').split(',')[0].trim();
   ws.mergeCells('A4:G4');
-  setCell('A4', `NOMINATIF HONOR INSTRUKTUR\n${rekapJudulLine}\n${h.judul3}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
+  setCell('A4', `NOMINATIF HONOR INSTRUKTUR\n${rekapJudulLine}\n${judul3TanpaTanggal2}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
   ws.getRow(4).height = 50;
 
   const pphPersen = el('f_pphdefault') ? el('f_pphdefault').value : '5';
