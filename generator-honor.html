@@ -673,7 +673,15 @@ Siti Aminah, SD</pre>
         <label>Tanggal untuk SPB &amp; Kuitansi (opsional)</label>
         <input id="spbTanggalManual" type="date" placeholder="Kosongkan = ikut Tanggal Kegiatan global">
       </div>
-      <div class="small-note" style="margin:0;align-self:center;">Kosongkan untuk otomatis ikut Tanggal Kegiatan di panel kiri. Isi kalau SPB &amp; Kuitansi perlu tanggal berbeda (misal tanggal pencairan dana).</div>
+      <div class="field" style="min-width:240px;">
+        <label>Nama Penerima Uang (Kuitansi, opsional)</label>
+        <input id="kwPenerimaNama" placeholder="Kosongkan = ikut Yang Membayarkan">
+      </div>
+      <div class="field" style="min-width:220px;">
+        <label>NIP Penerima Uang (Kuitansi, opsional)</label>
+        <input id="kwPenerimaNip" placeholder="Kosongkan = ikut Yang Membayarkan">
+      </div>
+      <div class="small-note" style="margin:0;align-self:center;">Kosongkan Tanggal untuk otomatis ikut Tanggal Kegiatan global. Kosongkan Nama/NIP Penerima untuk otomatis ikut data "Yang Membayarkan" di panel kiri — isi manual kalau penerima uang kuitansi berbeda orang.</div>
     </div>
     <div class="small-note" style="margin-bottom:14px;">Isi data sekali di panel kiri — tombol <strong>Cetak Semua</strong> dan <strong>Ekspor PDF Gabungan</strong> otomatis membuat 2 halaman: semua narasumber dalam satu tabel Tanda Terima Honor, lalu semua narasumber dalam satu tabel Daftar Hadir. Centang opsi "1 narasumber = 1 halaman" di panel Daftar Narasumber kalau mau tiap orang punya halaman terpisah.</div>
     <div class="paper" id="paper"></div>
@@ -1892,8 +1900,8 @@ function buildSPBHTML(group, nomorUrutValue){
         <div>
           <div class="foot-top">Diterima Tanggal ${tanggal}<br>Penerima Uang/Uang Muka</div>
           <div class="sig-space"></div>
-          <div class="name">${h.bayarNama}</div>
-          NIP. ${h.bayarNip}
+          <div class="name">${(el('kwPenerimaNama') && el('kwPenerimaNama').value.trim()) || h.bayarNama}</div>
+          NIP. ${(el('kwPenerimaNip') && el('kwPenerimaNip').value.trim()) || h.bayarNip}
         </div>
         <div>
           <div class="foot-top">${kota}, ${tanggal}<br>A.n Kuasa Pengguna Anggaran<br>Pejabat Pembuat Komitmen</div>
@@ -2376,6 +2384,8 @@ el('skJenisKegiatan').addEventListener('change', () => {
 el('skMenimbangEdit').addEventListener('input', renderPreview);
 el('skKeduaEdit').addEventListener('input', renderPreview);
 el('spbTanggalManual').addEventListener('input', renderPreview);
+el('kwPenerimaNama').addEventListener('input', renderPreview);
+el('kwPenerimaNip').addEventListener('input', renderPreview);
 el('btnResetSKNarasi').addEventListener('click', () => {
   syncSKNarasiFromTemplate();
   renderPreview();
