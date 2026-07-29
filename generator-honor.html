@@ -625,6 +625,10 @@ Siti Aminah, SD</pre>
         <label>Judul Kegiatan untuk Rekap (opsional)</label>
         <input id="rekapJudulKegiatan" placeholder="Kosongkan = OLAH BAKAT DAN MINAT">
       </div>
+      <div class="field" style="min-width:240px;">
+        <label>Tanggal Pengesahan Rekap (opsional)</label>
+        <input id="rekapTglPengesahanManual" type="date" placeholder="Kosongkan = ikut Tanggal Kegiatan global">
+      </div>
     </div>
     <div class="rekap-filters" id="skFilters" style="display:none;">
       <div class="field" style="min-width:320px;"><label>Jenis Kegiatan / Ekstrakurikuler untuk SK</label>
@@ -2248,6 +2252,9 @@ function buildRekapHTML(){
   const rekapJudulLine = rekapJudulInput
     ? (/^DALAM RANGKA/i.test(rekapJudulInput) ? rekapJudulInput.toUpperCase() : 'DALAM RANGKA KEGIATAN ' + rekapJudulInput.toUpperCase())
     : 'DALAM RANGKA KEGIATAN OLAH BAKAT DAN MINAT';
+  const rekapTglPengesahanManual = el('rekapTglPengesahanManual') ? el('rekapTglPengesahanManual').value : '';
+  const kotaTtdRekap = (h.ttdLokasi || '').split(',')[0].trim() || 'Bireuen';
+  const ttdLokasiRekap = rekapTglPengesahanManual ? `${kotaTtdRekap}, ${formatTanggalID(rekapTglPengesahanManual)}` : h.ttdLokasi;
 
   return `
   <div class="doc-rekap">
@@ -2311,7 +2318,7 @@ function buildRekapHTML(){
           </div>
           <div>
             <div class="lbl">
-              ${h.ttdLokasi}<br>
+              ${ttdLokasiRekap}<br>
               Yang Membayarkan<br>
               ${h.bayarJabatan}
             </div>
@@ -2490,6 +2497,7 @@ el('btnKategoriKosongkan').addEventListener('click', () => {
 el('rekapTanggalFilter').addEventListener('change', renderPreview);
 el('rekapGroupBy').addEventListener('change', renderPreview);
 el('rekapJudulKegiatan').addEventListener('input', renderPreview);
+el('rekapTglPengesahanManual').addEventListener('input', renderPreview);
 
 el('btnAddRow').addEventListener('click', () => {
   rows.push({nama:'', org:'', jabatan:'', rate:0, oj:1, pph: parseFloat(el('f_pphdefault').value)||0, jenjang: null});
@@ -2897,6 +2905,9 @@ async function exportExcelRekap(){
   const rekapJudulLine = rekapJudulInput
     ? (/^DALAM RANGKA/i.test(rekapJudulInput) ? rekapJudulInput.toUpperCase() : 'DALAM RANGKA KEGIATAN ' + rekapJudulInput.toUpperCase())
     : 'DALAM RANGKA KEGIATAN OLAH BAKAT DAN MINAT';
+  const rekapTglPengesahanManual2 = el('rekapTglPengesahanManual') ? el('rekapTglPengesahanManual').value : '';
+  const kotaTtdRekap2 = (h.ttdLokasi || '').split(',')[0].trim() || 'Bireuen';
+  const ttdLokasiRekap2 = rekapTglPengesahanManual2 ? `${kotaTtdRekap2}, ${formatTanggalID(rekapTglPengesahanManual2)}` : h.ttdLokasi;
   ws.mergeCells('A4:G4');
   setCell('A4', `NOMINATIF HONOR INSTRUKTUR\n${rekapJudulLine}\n${h.judul3}`, {font:{bold:true,size:12}, alignment:{horizontal:'center', vertical:'middle', wrapText:true}});
   ws.getRow(4).height = 50;
@@ -2986,7 +2997,7 @@ async function exportExcelRekap(){
     {alignment:{horizontal:'left', vertical:'top', wrapText:true}, border:false});
 
   ws.mergeCells(`E${r}:G${r+4}`);
-  setCell(`E${r}`, `${h.ttdLokasi}\nYang Membayarkan\n${h.bayarJabatan}\n\n\n\n${h.bayarNama}\nNIP. ${h.bayarNip}`,
+  setCell(`E${r}`, `${ttdLokasiRekap2}\nYang Membayarkan\n${h.bayarJabatan}\n\n\n\n${h.bayarNama}\nNIP. ${h.bayarNip}`,
     {alignment:{horizontal:'center', vertical:'top', wrapText:true}, border:false});
 
   for(let rr=footerStartRow; rr<=footerStartRow+4; rr++) ws.getRow(rr).height = 22;
