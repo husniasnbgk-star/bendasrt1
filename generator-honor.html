@@ -466,6 +466,7 @@ Siti Aminah, SD</pre>
     <button class="btn-gold" id="btnPdfAll">Ekspor PDF Gabungan</button>
     <button class="btn-ghost" id="btnPrintMaster">Cetak Semua Dokumen</button>
     <button class="btn-gold" id="btnPdfMaster">Ekspor PDF Semua Dokumen</button>
+    <button class="btn-gold" id="btnExportAll">📦 Export ALL</button>
     <button class="btn-ghost" id="btnPrintRekapSpb">Cetak Rekap &amp; SPB</button>
     <button class="btn-gold" id="btnPdfRekapSpb">Ekspor PDF Rekap &amp; SPB</button>
     <button class="btn-gold" id="btnPdfRekapSemuaKategori">📋 Ekspor PDF Rekap — Semua Momen/Kategori</button>
@@ -3212,6 +3213,80 @@ el('btnPdfMaster').addEventListener('click', async () => {
   } catch(err){
     console.error(err);
     alert('Gagal membuat PDF semua dokumen.');
+  } finally {
+    docMode = originalMode;
+    renderPreview();
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+});
+
+el('btnExportAll').addEventListener('click', async () => {
+  const btn = el('btnExportAll');
+  const original = btn.textContent;
+  btn.textContent = 'Membuat PDF...';
+  btn.disabled = true;
+  const originalMode = docMode;
+  try {
+    const active = getActiveRows();
+    const h = gatherHeader();
+    const pages = [];
+    pages.push({html: buildTTHHTML(active), type:'tth'});
+    pages.push({html: buildHadirHTML(active), type:'hadir'});
+    active.forEach((r,i) => pages.push({html: buildSuratHTML(r, i), type:'surat'}));
+    if(skPerPersonMode && active.length > 0){
+      active.forEach((r,i) => pages.push({html: buildSKHTML([r], resolveSKNomorForIndex(r, i, h)), type:'sk'}));
+    } else {
+      pages.push({html: buildSKHTML(), type:'sk'});
+    }
+
+    if(pages.length === 0){
+      alert('Belum ada narasumber yang diinput.');
+      btn.textContent = original;
+      btn.disabled = false;
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const paper = el('paper');
+    let pdf = null;
+
+    for(let i = 0; i < pages.length; i++){
+      const p = pages[i];
+      const ds = docSettings[p.type] || DOC_SETTINGS_DEFAULT.tth;
+      const isPortrait = ds.orient === 'portrait';
+      const marginTop = ds.marginTop * 10;
+      const marginBottom = ds.marginBottom * 10;
+      const marginLeftMM = ds.marginLeft * 10;
+      const marginRightMM = ds.marginRight * 10;
+
+      paper.innerHTML = p.html;
+      paper.classList.add('no-frame');
+      fitNamaCells(paper);
+      const canvas = await html2canvas(paper, {scale: 2, backgroundColor: '#ffffff'});
+      const imgData = canvas.toDataURL('image/png');
+      const imgRatio = canvas.height / canvas.width;
+
+      if(i === 0){
+        pdf = new jsPDF({orientation: isPortrait ? 'portrait' : 'landscape', unit: 'mm', format: 'a4'});
+      } else {
+        pdf.addPage('a4', isPortrait ? 'portrait' : 'landscape');
+      }
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const availW = pageW - marginLeftMM - marginRightMM;
+      const availH = pageH - marginTop - marginBottom;
+      let renderW = availW, renderH = renderW * imgRatio;
+      if(renderH > availH){ renderH = availH; renderW = renderH / imgRatio; }
+      const x = marginLeftMM + (availW - renderW) / 2, y = marginTop;
+      pdf.addImage(imgData, 'PNG', x, y, renderW, renderH);
+    }
+
+    const baseName = (h.judul2 || 'Dokumen_Kegiatan').replace(/[^a-z0-9]+/gi, '_').substring(0, 40);
+    pdf.save(baseName + '_Export_ALL.pdf');
+    await addToRiwayat('Export ALL');
+  } catch(err){
+    console.error(err);
+    alert('Gagal membuat PDF Export ALL.');
   } finally {
     docMode = originalMode;
     renderPreview();
