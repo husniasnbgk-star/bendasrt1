@@ -1647,12 +1647,21 @@ function buildSKHTML(rowsSubset, nomorOverride){
   const kota = (h.ttdLokasi || '').split(',')[0].trim() || h.lokasiKegiatan || 'Bireuen';
 
   const skKey = el('skJenisKegiatan') ? el('skJenisKegiatan').value : 'LAINNYA';
-  const tpl = SK_TEMPLATES[skKey] || SK_TEMPLATES.LAINNYA;
-  const kegiatanPhrase = tpl.label || kegiatanPhraseFree;
-  const menimbangEdited = el('skMenimbangEdit') ? el('skMenimbangEdit').value.trim() : '';
-  const menimbangInti = menimbangEdited || tpl.menimbang || `melaksanakan kegiatan ${kegiatanPhraseFree}`;
-  const keduaEdited = el('skKeduaEdit') ? el('skKeduaEdit').value.split('\n').map(s => s.trim()).filter(Boolean) : [];
-  const keduaPoints = keduaEdited.length > 0 ? keduaEdited : tpl.kedua;
+  let tpl, kegiatanPhrase, menimbangInti, keduaPoints;
+  const perPersonOwnKategori = rowsSubset && rowsSubset.length === 1 && rowsSubset[0].kategori && rowsSubset[0].kategori !== skKey;
+  if(perPersonOwnKategori){
+    tpl = SK_TEMPLATES[rowsSubset[0].kategori] || SK_TEMPLATES.LAINNYA;
+    kegiatanPhrase = tpl.label || kegiatanPhraseFree;
+    menimbangInti = tpl.menimbang || `melaksanakan kegiatan ${kegiatanPhraseFree}`;
+    keduaPoints = tpl.kedua;
+  } else {
+    tpl = SK_TEMPLATES[skKey] || SK_TEMPLATES.LAINNYA;
+    kegiatanPhrase = tpl.label || kegiatanPhraseFree;
+    const menimbangEdited = el('skMenimbangEdit') ? el('skMenimbangEdit').value.trim() : '';
+    menimbangInti = menimbangEdited || tpl.menimbang || `melaksanakan kegiatan ${kegiatanPhraseFree}`;
+    const keduaEdited = el('skKeduaEdit') ? el('skKeduaEdit').value.split('\n').map(s => s.trim()).filter(Boolean) : [];
+    keduaPoints = keduaEdited.length > 0 ? keduaEdited : tpl.kedua;
+  }
 
   const namaListHTML = active.length > 0
     ? active.map(r => `<li>Nama: <strong>${r.nama}</strong> — ${(r.jabatan || 'Instruktur')} ${kegiatanPhrase}</li>`).join('')
