@@ -959,10 +959,22 @@ function computeRow(r){
   return {totalKotor, pphAmt, bersih};
 }
 
+function sortRowsByTanggal(list, globalTgl){
+  return [...list].sort((a, b) => {
+    const da = a.tanggal || globalTgl || '';
+    const db = b.tanggal || globalTgl || '';
+    if(!da && !db) return 0;
+    if(!da) return 1;
+    if(!db) return -1;
+    return da.localeCompare(db);
+  });
+}
+
 function getActiveRows(){
   const active = el('f_jenjang').value;
-  if(active === 'ALL') return rows;
-  return rows.filter(r => !r.jenjang || r.jenjang === 'ALL' || r.jenjang === active);
+  const filtered = active === 'ALL' ? rows : rows.filter(r => !r.jenjang || r.jenjang === 'ALL' || r.jenjang === active);
+  const globalTgl = el('f_tgl_kegiatan') ? el('f_tgl_kegiatan').value : '';
+  return sortRowsByTanggal(filtered, globalTgl);
 }
 
 function fitNamaCells(root){
@@ -2115,7 +2127,7 @@ function buildRekapHTML(){
   const tanggalFilter = el('rekapTanggalFilter') ? el('rekapTanggalFilter').value : 'ALL';
   const groupBy = el('rekapGroupBy') ? el('rekapGroupBy').value : 'jenjang';
 
-  const filteredRows = rows.filter(r => {
+  const filteredRows = sortRowsByTanggal(rows.filter(r => {
     if(jenjangFilter !== 'ALL' && (r.jenjang || 'ALL') !== jenjangFilter) return false;
     if(selectedKategoriSet.size > 0){
       const rk = r.kategori || 'NONE';
@@ -2123,7 +2135,7 @@ function buildRekapHTML(){
     }
     if(tanggalFilter !== 'ALL' && (r.tanggal || '') !== tanggalFilter) return false;
     return true;
-  });
+  }), h.tglKegiatan);
 
   let groupOrder, groupLabels, keyFn;
   if(groupBy === 'kategori'){
@@ -2806,12 +2818,12 @@ async function exportExcelRekap(){
   const groupBy = el('rekapGroupBy') ? el('rekapGroupBy').value : 'jenjang';
   const jenjangLabels = {SBC:'SD (SRD)', SBE:'SMP (SRMP)', SBB:'SMA (SRMA)', NONE:'Tanpa Jenjang'};
 
-  const filteredRows = rows.filter(r => {
+  const filteredRows = sortRowsByTanggal(rows.filter(r => {
     if(jenjangFilter !== 'ALL' && (r.jenjang || 'ALL') !== jenjangFilter) return false;
     if(selectedKategoriSet.size > 0 && !selectedKategoriSet.has(r.kategori || 'NONE')) return false;
     if(tanggalFilter !== 'ALL' && (r.tanggal || '') !== tanggalFilter) return false;
     return true;
-  });
+  }), h.tglKegiatan);
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Rekap', {pageSetup:{orientation:'landscape', fitToPage:true, fitToWidth:1, paperSize:9, margins:{left:0.98,right:0.98,top:0.98,bottom:0.98,header:0,footer:0}}});
@@ -3933,7 +3945,8 @@ async function exportDatabaseExcel(){
   const kegiatanUtama = toActivityPhrase(h.judul2) || h.judul2 || '';
   const noSKCombined = resolveSKNomorCombined(h);
 
-  const newRecords = rows.map((r, i) => {
+  const sortedRows = sortRowsByTanggal(rows, h.tglKegiatan);
+  const newRecords = sortedRows.map((r, i) => {
     const {totalKotor, pphAmt} = computeRow(r);
     const kegiatanPhrase = r.kegiatan
       ? toActivityPhrase('DALAM RANGKA KEGIATAN ' + r.kegiatan.toUpperCase())
