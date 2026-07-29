@@ -1114,6 +1114,10 @@ function buildTTHHTML(rowsSubset, startNo){
   let judul2 = h.judul2;
   let judul3 = h.judul3;
   let ttdLokasi = h.ttdLokasi;
+  let maDisplay = h.ma;
+  if(rowsSubset.length === 1 && rowsSubset[0].jenjang && /\bSB[BEC]\b/i.test(maDisplay)){
+    maDisplay = maDisplay.replace(/\bSB[BEC]\b/i, rowsSubset[0].jenjang);
+  }
   if(rowsSubset.length === 1 && rowsSubset[0].kegiatan){
     judul2 = /^DALAM RANGKA/i.test(rowsSubset[0].kegiatan) ? rowsSubset[0].kegiatan : ('DALAM RANGKA KEGIATAN ' + rowsSubset[0].kegiatan.toUpperCase());
   }
@@ -1157,7 +1161,7 @@ function buildTTHHTML(rowsSubset, startNo){
         <table style="width:100%;border:none;border-collapse:collapse;">
           <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">No. Bukti Kas</td><td style="border:none;padding:2px 6px;">: ${h.bukti||''}</td></tr>
           <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Tgl. Pembukuan</td><td style="border:none;padding:2px 6px;">: ${h.tglbuku||''}</td></tr>
-          <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Mata Anggaran</td><td style="border:none;padding:2px 6px;">: ${h.ma||''}</td></tr>
+          <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Mata Anggaran</td><td style="border:none;padding:2px 6px;">: ${maDisplay||''}</td></tr>
           <tr><td style="border:none;padding:2px 6px;" class="kop-right-label">Tahun Anggaran</td><td style="border:none;padding:2px 6px;">: ${h.ta||''}</td></tr>
         </table>
       </td>
@@ -4109,6 +4113,10 @@ async function processImportedWorkbookBuffer(arrayBuffer){
   if(firstTanggalIso){
     el('f_tgl_kegiatan').value = firstTanggalIso;
     syncKegiatanDate();
+  }
+  const rowWithJenjangImport = parsedRows.find(r => r.jenjang);
+  if(rowWithJenjangImport){
+    updateMataAnggaranAndJudul(rowWithJenjangImport.jenjang);
   }
   renderRows();
   renderPreview();
