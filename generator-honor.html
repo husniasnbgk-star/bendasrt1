@@ -283,6 +283,12 @@
   .spb-footer2 .foot-top{min-height:52px;}
   .kw-title{text-align:center;font-weight:700;font-size:13pt;margin:16px 0;}
   .kw-right-meta{text-align:right;font-size:10.5pt;}
+  .kw-kop{display:flex;align-items:center;gap:10px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px;}
+  .kw-kop-logo{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
+  .kw-kop-text{flex:1;text-align:center;}
+  .kw-kop-l1{font-size:11pt;line-height:1.3;}
+  .kw-kop-l2{font-size:13pt;font-weight:700;line-height:1.3;}
+  .kw-kop-l3{font-size:9pt;line-height:1.3;}
   .kw-right-meta table{margin-left:auto;border-collapse:collapse;}
   .kw-right-meta td{padding:1px 0;text-align:left;}
   .kw-right-meta td:first-child{padding-right:8px;white-space:nowrap;}
@@ -1664,7 +1670,7 @@ function buildSKHTML(rowsSubset, nomorOverride){
   }
 
   const namaListHTML = active.length > 0
-    ? active.map(r => `<li>Nama: <strong>${r.nama}</strong> — ${(r.jabatan || 'Instruktur')} ${kegiatanPhrase}</li>`).join('')
+    ? active.map(r => `<li>Nama: <strong>${r.nama}</strong> — ${(r.jabatan || 'Instruktur')} ${kegiatanPhrase}, ${formatTanggalID(r.tanggal || isoKegiatan)}</li>`).join('')
     : `<li><em>Belum ada narasumber yang diinput.</em></li>`;
 
   return `
@@ -1911,6 +1917,14 @@ function buildKuitansiHTML(group, nomorUrutValue){
 
   return `
   <div class="spb-page doc-spb">
+    <div class="kw-kop">
+      <img class="kw-kop-logo" src="${LOGO_KEMENSOS}" alt="Logo Kementerian Sosial">
+      <div class="kw-kop-text">
+        <div class="kw-kop-l1">KEMENTERIAN SOSIAL REPUBLIK INDONESIA</div>
+        <div class="kw-kop-l2">PUSAT PENDIDIKAN PELATIHAN DAN PENGEMBANGAN PROFESI</div>
+        <div class="kw-kop-l3">Jl. Salemba Raya No.28 Jakarta Pusat 10430 Telp. 021-3103591 Laman : http/www.kemsos.go.id</div>
+      </div>
+    </div>
     <div class="spb-section">
       <div class="kw-right-meta">
         <table>
