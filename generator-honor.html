@@ -281,7 +281,7 @@
   .spb-footer2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
   .spb-footer2 > div{display:flex;flex-direction:column;}
   .spb-footer2 .foot-top{min-height:52px;}
-  .kw-title{text-align:center;font-weight:700;font-size:13pt;margin:16px 0;}
+  .kw-title{text-align:center;font-weight:700;font-size:26pt;margin:16px 0;}
   .kw-right-meta{text-align:right;font-size:10.5pt;}
   .kw-kop{display:flex;align-items:center;gap:10px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px;}
   .kw-kop-logo{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
@@ -666,6 +666,13 @@ Siti Aminah, SD</pre>
         <button class="btn-gold" id="btnSaveSKNarasi" type="button">💾 Simpan Perubahan Narasi</button>
         <button class="btn-outline" id="btnSaveAsNewSK" type="button">💾 Simpan sebagai SK Baru...</button>
       </div>
+    </div>
+    <div class="rekap-filters" id="spbFilters" style="display:none;">
+      <div class="field" style="min-width:280px;">
+        <label>Tanggal untuk SPB &amp; Kuitansi (opsional)</label>
+        <input id="spbTanggalManual" type="date" placeholder="Kosongkan = ikut Tanggal Kegiatan global">
+      </div>
+      <div class="small-note" style="margin:0;align-self:center;">Kosongkan untuk otomatis ikut Tanggal Kegiatan di panel kiri. Isi kalau SPB &amp; Kuitansi perlu tanggal berbeda (misal tanggal pencairan dana).</div>
     </div>
     <div class="small-note" style="margin-bottom:14px;">Isi data sekali di panel kiri — tombol <strong>Cetak Semua</strong> dan <strong>Ekspor PDF Gabungan</strong> otomatis membuat 2 halaman: semua narasumber dalam satu tabel Tanda Terima Honor, lalu semua narasumber dalam satu tabel Daftar Hadir. Centang opsi "1 narasumber = 1 halaman" di panel Daftar Narasumber kalau mau tiap orang punya halaman terpisah.</div>
     <div class="paper" id="paper"></div>
@@ -1070,6 +1077,7 @@ function renderDailyReport(){
 function renderPreview(){
   if(el('rekapFilters')) el('rekapFilters').style.display = docMode === 'rekap' ? 'flex' : 'none';
   if(el('skFilters')) el('skFilters').style.display = docMode === 'sk' ? 'flex' : 'none';
+  if(el('spbFilters')) el('spbFilters').style.display = docMode === 'spb' ? 'flex' : 'none';
   if(el('jenjangFilterInfo')){
     const active = el('f_jenjang').value;
     const n = getActiveRows().length;
@@ -1822,7 +1830,8 @@ const BULAN_INDO = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Ag
 
 function buildSPBHTML(group, nomorUrutValue){
   const h = gatherHeader();
-  const isoTgl = h.tglKegiatan || new Date().toISOString().slice(0,10);
+  const spbTglManual = el('spbTanggalManual') ? el('spbTanggalManual').value : '';
+  const isoTgl = spbTglManual || h.tglKegiatan || new Date().toISOString().slice(0,10);
   const tanggal = formatTanggalID(isoTgl);
   const tahun = isoTgl.split('-')[0] || new Date().getFullYear();
   const bulanIdx = parseInt((isoTgl.split('-')[1] || '1'), 10) - 1;
@@ -1899,7 +1908,8 @@ function buildSPBHTML(group, nomorUrutValue){
 
 function buildKuitansiHTML(group, nomorUrutValue){
   const h = gatherHeader();
-  const isoTgl = h.tglKegiatan || new Date().toISOString().slice(0,10);
+  const spbTglManual = el('spbTanggalManual') ? el('spbTanggalManual').value : '';
+  const isoTgl = spbTglManual || h.tglKegiatan || new Date().toISOString().slice(0,10);
   const tanggal = formatTanggalID(isoTgl);
   const tahun = isoTgl.split('-')[0] || new Date().getFullYear();
   const bulanIdx = parseInt((isoTgl.split('-')[1] || '1'), 10) - 1;
@@ -2315,6 +2325,7 @@ el('docTabs').addEventListener('click', e => {
   el('docTabs').querySelectorAll('.doc-tab').forEach(b => b.classList.toggle('active', b === btn));
   el('rekapFilters').style.display = docMode === 'rekap' ? 'flex' : 'none';
   el('skFilters').style.display = docMode === 'sk' ? 'flex' : 'none';
+  el('spbFilters').style.display = docMode === 'spb' ? 'flex' : 'none';
   if(docMode === 'rekap') populateRekapTanggalFilter();
   renderPreview();
 });
@@ -2363,6 +2374,7 @@ el('skJenisKegiatan').addEventListener('change', () => {
 });
 el('skMenimbangEdit').addEventListener('input', renderPreview);
 el('skKeduaEdit').addEventListener('input', renderPreview);
+el('spbTanggalManual').addEventListener('input', renderPreview);
 el('btnResetSKNarasi').addEventListener('click', () => {
   syncSKNarasiFromTemplate();
   renderPreview();
