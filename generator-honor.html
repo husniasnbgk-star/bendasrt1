@@ -4063,10 +4063,15 @@ async function processImportedWorkbookBuffer(arrayBuffer){
     const key = (v || '').toString().trim().toLowerCase();
     if(key) colIndex[key] = i;
   });
+  function findColByKeywords(...keywords){
+    const entry = Object.keys(colIndex).find(k => keywords.every(kw => k.includes(kw)));
+    return entry ? colIndex[entry] : null;
+  }
   const idxKegiatan = colIndex['nama kegiatan'] || 2;
   const idxNama = colIndex['nama narasumber'] || 3;
   const idxInstruktur = colIndex['instruktur kegiatan'] || null;
-  const idxKategori = colIndex['kategori / momen acara'] || colIndex['kategori'] || null;
+  const idxKategori = colIndex['kategori / momen acara'] || colIndex['kategori']
+    || findColByKeywords('kategori') || findColByKeywords('momen') || null;
   const idxHonor = colIndex['jumlah honor'] || (idxKategori || idxInstruktur ? Math.max(idxKategori||0, idxInstruktur||0) + 1 : 4);
   const idxPajak = colIndex['jumlah pajak'] || idxHonor + 1;
   const idxTgl = colIndex['tgl kegiatan'] || idxPajak + 1;
@@ -4077,7 +4082,19 @@ async function processImportedWorkbookBuffer(arrayBuffer){
   function kategoriLabelKeKode(label){
     if(!label) return '';
     const target = label.trim().toLowerCase();
-    const found = Object.keys(KATEGORI_LABELS).find(k => KATEGORI_LABELS[k].toLowerCase() === target);
+    // 1. Exact match against full label (e.g. "Masa Pengenalan Lingkungan Sekolah (MPLS)")
+    let found = Object.keys(KATEGORI_LABELS).find(k => KATEGORI_LABELS[k].toLowerCase() === target);
+    // 2. Exact match against the internal code itself (e.g. "MPLS", "BARIS_BERBARIS")
+    if(!found){
+      found = Object.keys(KATEGORI_LABELS).find(k => k.toLowerCase() === target || k.toLowerCase().replace(/_/g,' ') === target);
+    }
+    // 3. Partial/substring match either direction (e.g. user typed "MPLS" or "Baris Berbaris")
+    if(!found){
+      found = Object.keys(KATEGORI_LABELS).find(k => {
+        const lbl = KATEGORI_LABELS[k].toLowerCase();
+        return k !== 'NONE' && (lbl.includes(target) || target.includes(lbl.split(' (')[0].toLowerCase()) || target.includes(k.toLowerCase()));
+      });
+    }
     return found && found !== 'NONE' ? found : '';
   }
 
