@@ -4148,12 +4148,17 @@ async function processImportedWorkbookBuffer(arrayBuffer){
   if(rowWithJenjangImport){
     updateMataAnggaranAndJudul(rowWithJenjangImport.jenjang);
   }
+  const rowWithKategoriImport = parsedRows.find(r => r.kategori);
+  if(rowWithKategoriImport && el('skJenisKegiatan')){
+    el('skJenisKegiatan').value = rowWithKategoriImport.kategori;
+    syncSKNarasiFromTemplate();
+  }
   renderRows();
   renderPreview();
   const numberNote = useOldNumbers
     ? ' Nomor Surat & SK lama akan dipakai ulang sesuai yang tercatat di file (opsi sedang aktif).'
     : ' Nomor Surat & SK akan dibuat baru mengikuti pengaturan saat ini (centang "Gunakan nomor lama" kalau mau pakai nomor asli dari file).';
-  alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang. Khusus tab Rekap Data, kamu bisa pilih momen acara tertentu (mis. MPLS) lewat "Filter Kategori Kegiatan", atau kelompokkan otomatis per minggu/bulan lewat "Kelompokkan Berdasarkan".`);
+  alert(`Berhasil memuat ${parsedRows.length} narasumber dari Database Excel.${numberNote} SK Instruktur otomatis menyesuaikan Kategori/Momen Acara dari data yang dimuat. Silakan buka tab dokumen mana pun (Tanda Terima, Daftar Hadir, Surat Undangan, Rekap Data, SK Instruktur, atau SPB & Kuitansi) untuk cetak ulang. Khusus tab Rekap Data, kamu bisa pilih momen acara tertentu (mis. MPLS) lewat "Filter Kategori Kegiatan", atau kelompokkan otomatis per minggu/bulan lewat "Kelompokkan Berdasarkan".`);
 }
 
 el('btnImportFromDrive').addEventListener('click', async () => {
